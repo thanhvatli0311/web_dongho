@@ -71,7 +71,7 @@ project-dongho/
 
 1. Cài đặt XAMPP bản 8.1 hoặc WAMP (có Apache và MySQL).
 2. Giải nén hoặc sao chép thư mục `project-dongho` vào `htdocs`.
-   → Ví dụ: C:\xampp81\htdocs\project-dongho
+   → Ví dụ: C:\xampp81\-\project-dongho
 3. Mở XAMPP Control Panel, bật Apache và MySQL.
 4. Truy cập http://localhost/phpmyadmin để tạo cơ sở dữ liệu `web_dongho`.
 5. Mở file `includes/config.php` và cấu hình:
