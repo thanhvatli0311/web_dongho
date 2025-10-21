@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Giỏ Hàng - Shop Đồng Hồ</title>
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        .cart-page-wrapper {
+            background-color: #fff;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-top: 20px;
+        }
+
+        .cart-page-wrapper h2 {
+            text-align: center;
+            color: #007bff;
+            margin-bottom: 30px;
+        }
+
+        .cart-items-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+
+        .cart-items-table th, .cart-items-table td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+            vertical-align: middle;
+        }
+
+        .cart-items-table th {
+            background-color: #f8f8f8;
+            font-weight: bold;
+        }
+
+        .cart-item-image {
+            width: 80px;
+            height: 80px;
+            object-fit: contain;
+            border-radius: 4px;
+        }
+
+        .cart-item-name {
+            font-weight: bold;
+        }
+
+        .quantity-control {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .quantity-control button {
+            background-color: #007bff;
+            color: #fff;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        .quantity-control button:hover {
+            background-color: #0056b3;
+        }
+
+        .quantity-control input[type="number"] {
+            width: 50px;
+            text-align: center;
+            padding: 5px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+
+        .remove-item-btn {
+            background-color: #dc3545;
+            color: #fff;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        .remove-item-btn:hover {
+            background-color: #c82333;
+        }
+
+        .cart-summary {
+            display: flex;
+            justify-content: flex-end;
+            margin-top: 30px;
+            border-top: 1px solid #eee;
+            padding-top: 20px;
+        }
+
+        .cart-total {
+            text-align: right;
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .cart-total span {
+            color: #dc3545;
+        }
+
+        .checkout-actions {
+            text-align: right;
+            margin-top: 20px;
+        }
+
+        .checkout-actions .btn-primary {
+            font-size: 1.2em;
+            padding: 12px 30px;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <div class="logo">
+                <a href="index.html"><h1>Shop Đồng Hồ</h1></a>
+            </div>
+            <nav>
+                <ul>
+                    <li><a href="index.html">Trang Chủ</a></li>
+                    <li><a href="products.html">Sản Phẩm</a></li>
+                    <li><a href="cart.html">Giỏ Hàng <span id="cart-count">(0)</span></a></li>
+                    <li id="auth-links">
+                        <a href="login.html">Đăng Nhập</a>
+                        <a href="register.html">Đăng Ký</a>
+                    </li>
+                    <li id="user-info" style="display: none;">
+                        Xin chào, <span id="username-display"></span>! (<a href="#" id="logout-btn">Đăng Xuất</a>)
+                    </li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <main class="container">
+        <div class="cart-page-wrapper">
+            <h2>Giỏ Hàng Của Bạn</h2>
+            <div id="cart-content">
+                <!-- Nội dung giỏ hàng sẽ được tải bằng JavaScript -->
+                <p style="text-align: center;">Giỏ hàng của bạn đang trống.</p>
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>&copy; 2023 Shop Đồng Hồ. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <script src="js/script.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/cart.js"></script> <!-- Sẽ chỉnh sửa file này -->
+</body>
+</html>

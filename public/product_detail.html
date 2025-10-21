@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title id="product-detail-title">Chi Tiết Sản Phẩm</title>
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        .product-detail-wrapper {
+            display: flex;
+            gap: 30px;
+            background-color: #fff;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-top: 20px;
+        }
+
+        .product-image-gallery {
+            flex: 0 0 40%; /* Chiếm 40% chiều rộng */
+            text-align: center;
+        }
+
+        .product-image-gallery img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .product-info {
+            flex: 1; /* Chiếm phần còn lại */
+        }
+
+        .product-info h2 {
+            font-size: 2.5em;
+            margin-top: 0;
+            color: #333;
+        }
+
+        .product-info .brand-category {
+            font-size: 0.9em;
+            color: #777;
+            margin-bottom: 15px;
+        }
+
+        .product-info .price {
+            font-size: 2em;
+            color: #dc3545;
+            font-weight: bold;
+            margin-bottom: 20px;
+        }
+
+        .product-info .availability {
+            margin-bottom: 15px;
+            font-weight: bold;
+        }
+
+        .product-info .availability.in-stock {
+            color: #28a745;
+        }
+
+        .product-info .availability.out-of-stock {
+            color: #dc3545;
+        }
+
+        .product-description {
+            margin-top: 30px;
+            border-top: 1px solid #eee;
+            padding-top: 20px;
+        }
+
+        .product-description h3 {
+            color: #007bff;
+        }
+
+        .add-to-cart-section {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-top: 20px;
+            border-top: 1px solid #eee;
+            padding-top: 20px;
+        }
+
+        .add-to-cart-section input[type="number"] {
+            width: 70px;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            text-align: center;
+        }
+
+        .add-to-cart-section button {
+            background-color: #28a745;
+            color: #fff;
+            padding: 12px 25px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1.1em;
+            transition: background-color 0.3s ease;
+        }
+
+        .add-to-cart-section button:hover {
+            background-color: #218838;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .product-detail-wrapper {
+                flex-direction: column;
+            }
+            .product-image-gallery {
+                flex: 0 0 100%;
+            }
+            .product-info {
+                flex: 0 0 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <div class="logo">
+                <a href="index.html"><h1>Shop Đồng Hồ</h1></a>
+            </div>
+            <nav>
+                <ul>
+                    <li><a href="index.html">Trang Chủ</a></li>
+                    <li><a href="products.html">Sản Phẩm</a></li>
+                    <li><a href="cart.html">Giỏ Hàng <span id="cart-count">(0)</span></a></li>
+                    <li id="auth-links">
+                        <a href="login.html">Đăng Nhập</a>
+                        <a href="register.html">Đăng Ký</a>
+                    </li>
+                    <li id="user-info" style="display: none;">
+                        Xin chào, <span id="username-display"></span>! (<a href="#" id="logout-btn">Đăng Xuất</a>)
+                    </li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <main class="container">
+        <div id="product-detail-content">
+            <!-- Nội dung chi tiết sản phẩm sẽ được tải bằng JavaScript -->
+            <p style="text-align: center;">Đang tải chi tiết sản phẩm...</p>
+        </div>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>&copy; 2023 Shop Đồng Hồ. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <script src="js/script.js"></script>
+    <script src="js/auth.js"></script>
+    <!-- Thêm script riêng cho trang chi tiết sản phẩm -->
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            const productId = new URLSearchParams(window.location.search).get('id');
+            const productDetailContent = document.getElementById('product-detail-content');
+            const productDetailTitle = document.getElementById('product-detail-title');
+
+            if (!productId) {
+                productDetailContent.innerHTML = '<p style="text-align: center; color: red;">Không tìm thấy ID sản phẩm.</p>';
+                productDetailTitle.textContent = 'Lỗi - Shop Đồng Hồ';
+                return;
+            }
+
+            try {
+                const response = await fetch(`api/products.php?id=${productId}`);
+                const result = await response.json();
+
+                if (result.success && result.data) {
+                    const product = result.data;
+                    productDetailTitle.textContent = `${escapeHTML(product.name)} - Shop Đồng Hồ`;
+
+                    productDetailContent.innerHTML = `
+                        <div class="product-detail-wrapper">
+                            <div class="product-image-gallery">
+                                <img src="${product.image_url ? 'images/products/' + product.image_url : 'images/placeholder.jpg'}" alt="${escapeHTML(product.name)}">
+                                <!-- Có thể thêm các ảnh nhỏ khác ở đây nếu có -->
+                            </div>
+                            <div class="product-info">
+                                <h2>${escapeHTML(product.name)}</h2>
+                                <p class="brand-category">Thương hiệu: ${escapeHTML(product.brand_name)} | Danh mục: ${escapeHTML(product.category_name)}</p>
+                                <p class="price">${formatCurrency(product.price)}</p>
+                                <p class="availability ${product.stock_quantity > 0 ? 'in-stock' : 'out-of-stock'}">
+                                    Tình trạng: ${product.stock_quantity > 0 ? `Còn hàng (${product.stock_quantity} sản phẩm)` : 'Hết hàng'}
+                                </p>
+                                <div class="add-to-cart-section">
+                                    <input type="number" id="quantity-input" value="1" min="1" max="${product.stock_quantity}" ${product.stock_quantity === 0 ? 'disabled' : ''}>
+                                    <button id="add-to-cart-btn" data-product-id="${product.id}" ${product.stock_quantity === 0 ? 'disabled' : ''}>
+                                        <i class="fas fa-cart-plus"></i> Thêm vào giỏ
+                                    </button>
+                                </div>
+                                <div class="product-description">
+                                    <h3>Mô tả sản phẩm</h3>
+                                    <p>${escapeHTML(product.description)}</p>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+
+                    // Gắn sự kiện cho nút "Thêm vào giỏ"
+                    const addToCartBtn = document.getElementById('add-to-cart-btn');
+                    const quantityInput = document.getElementById('quantity-input');
+                    if (addToCartBtn) {
+                        addToCartBtn.addEventListener('click', async () => {
+                            const productId = addToCartBtn.dataset.productId;
+                            const quantity = parseInt(quantityInput.value);
+
+                            if (quantity <= 0 || quantity > product.stock_quantity) {
+                                showToast('Số lượng không hợp lệ hoặc vượt quá số lượng tồn kho.', 'error');
+                                return;
+                            }
+
+                            const response = await fetch('api/cart.php', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ product_id: productId, quantity: quantity })
+                            });
+                            const result = await response.json();
+                            showToast(result.message, result.success ? 'success' : 'error');
+                            if (result.success) {
+                                updateCartCount(); // Cập nhật số lượng giỏ hàng trên header
+                            }
+                        });
+                    }
+
+                } else {
+                    productDetailContent.innerHTML = '<p style="text-align: center; color: red;">Không tìm thấy sản phẩm này.</p>';
+                    productDetailTitle.textContent = 'Sản phẩm không tồn tại - Shop Đồng Hồ';
+                }
+            } catch (error) {
+                console.error('Error loading product detail:', error);
+                productDetailContent.innerHTML = '<p style="text-align: center; color: red;">Đã xảy ra lỗi khi tải chi tiết sản phẩm.</p>';
+                productDetailTitle.textContent = 'Lỗi - Shop Đồng Hồ';
+            }
+        });
+    </script>
+</body>
+</html>
