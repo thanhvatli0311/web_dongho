@@ -73,14 +73,14 @@ project-dongho/
 2. Giải nén hoặc sao chép thư mục `project-dongho` vào `htdocs`.
    → Ví dụ: C:\xampp\htdocs\project-dongho
 3. Mở XAMPP Control Panel, bật Apache và MySQL.
-4. Truy cập http://localhost/phpmyadmin để tạo cơ sở dữ liệu `watch_shop_db`.
+4. Truy cập http://localhost/phpmyadmin để tạo cơ sở dữ liệu `web_dongho`.
 5. Mở file `includes/config.php` và cấu hình:
 
 <?php
 define('DB_HOST', 'localhost');
 define('DB_USER', 'root');
 define('DB_PASS', '');
-define('DB_NAME', 'watch_shop_db');
+define('DB_NAME', 'web_dongho');
 ?>
 
 6. Mở trình duyệt truy cập:
