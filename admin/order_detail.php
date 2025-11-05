@@ -78,7 +78,7 @@ $chitiet = $stmt2->get_result();
                 <th>Tên hàng</th>
                 <th>Đơn giá</th>
                 <th>Số lượng</th>
-                <th>Tổng phụ</th>
+                <th>Tổng tiền</th>
             </tr>
         </thead>
         <tbody>

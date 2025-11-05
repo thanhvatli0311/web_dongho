@@ -61,43 +61,7 @@ include '../templates/header.php';
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
-        body {
-            background-color: #f8f9fa;
-        }
-        .login-container {
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        .login-card {
-            max-width: 400px;
-            width: 100%;
-            padding: 2rem;
-            box-shadow: 0 0 15px rgba(0,0,0,0.1);
-            border-radius: 10px;
-            background: white;
-        }
-        .login-header {
-            text-align: center;
-            margin-bottom: 2rem;
-        }
-        .login-header img {
-            width: 80px;
-            margin-bottom: 1rem;
-        }
-        .form-floating {
-            margin-bottom: 1rem;
-        }
-        .btn-login {
-            width: 100%;
-            padding: 0.8rem;
-        }
-        .error-message {
-            color: #dc3545;
-            text-align: center;
-            margin-bottom: 1rem;
-        }
+
     </style>
 </head>
 <body>
