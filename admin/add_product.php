@@ -1,7 +1,8 @@
 <?php
 session_start();
-include '../includes/db.php';
-include '../templates/adminheader.php';
+// Đồng bộ đường dẫn include/require
+require __DIR__ . '/../includes/db.php'; 
+require __DIR__ . '/../templates/adminheader.php';
 
 // Kiểm tra nếu chưa đăng nhập hoặc không phải Admin
 if (!isset($_SESSION['username']) || $_SESSION['role'] !== 'Admin') {
@@ -9,11 +10,16 @@ if (!isset($_SESSION['username']) || $_SESSION['role'] !== 'Admin') {
     exit;
 }
 
-// Hàm tự tạo mã hàng
-function getNextProductCode($conn) {
+// Kiểm tra biến $pdo
+if (!isset($pdo)) {
+    die("Lỗi: Không thể kết nối CSDL (PDO). Vui lòng kiểm tra file includes/db.php.");
+}
+
+// Hàm tự tạo mã hàng (Đã chuyển sang dùng PDO)
+function getNextProductCode($pdo) {
     $sql = "SELECT MAX(mahang) AS max_code FROM tbmathang WHERE mahang LIKE 'MH%'";
-    $result = $conn->query($sql);
-    $row = $result->fetch_assoc();
+    $stmt = $pdo->query($sql);
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
     $maxCode = $row['max_code'];
     
     if ($maxCode) {
@@ -33,7 +39,7 @@ function getNextProductCode($conn) {
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     // Sử dụng hàm để tự động tạo mã hàng
-    $mahang = getNextProductCode($conn);
+    $mahang = getNextProductCode($pdo); // Truyền $pdo thay vì $conn
     $tenhang    = trim($_POST['tenhang']);
     $mota       = trim($_POST['mota']);
     $dongia     = floatval($_POST['dongia']);
@@ -42,71 +48,72 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $conhang    = trim($_POST['conhang']);
     $hinhanh    = '';
 
-    // Xử lý tải lên hình ảnh chính
-    if (isset($_FILES['hinhanh']) && $_FILES['hinhanh']['error'] == 0) {
-        $target_dir = "../assets/images/";
-        $target_file = $target_dir . basename($_FILES["hinhanh"]["name"]);
-        $check = getimagesize($_FILES["hinhanh"]["tmp_name"]);
-        if ($check !== false) {
-            if (move_uploaded_file($_FILES["hinhanh"]["tmp_name"], $target_file)) {
-                $hinhanh = basename($_FILES["hinhanh"]["name"]);
-            }
+    // Xử lý tải lên hình ảnh (Phần này sử dụng PHP cơ bản, giữ nguyên logic cơ bản, nhưng sẽ chuyển sang PDO cho phần INSERT)
+    if (isset($_FILES['hinhanh']) && $_FILES['hinhanh']['error'] == UPLOAD_ERR_OK) {
+        $fileTmpPath = $_FILES['hinhanh']['tmp_name'];
+        $fileName = $_FILES['hinhanh']['name'];
+        $fileSize = $_FILES['hinhanh']['size'];
+        $fileType = $_FILES['hinhanh']['type'];
+        $fileNameCmps = explode(".", $fileName);
+        $fileExtension = strtolower(end($fileNameCmps));
+        
+        $newFileName = md5(time() . $fileName) . '.' . $fileExtension;
+        $dest_path = __DIR__ . "/../assets/images/" . $newFileName;
+
+        if(move_uploaded_file($fileTmpPath, $dest_path)) {
+            $hinhanh = $newFileName;
         }
     }
+    
+    // Sử dụng PDO prepared statement để INSERT
+    try {
+        $sql = "INSERT INTO tbmathang (mahang, tenhang, mota, dongia, nguongoc, thuonghieu, conhang, hinhanh) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute([$mahang, $tenhang, $mota, $dongia, $nguongoc, $thuonghieu, $conhang, $hinhanh]);
+        
+        // Thông báo thành công
+        echo "<div class='container' style='text-align: center; margin-top: 50px;'>";
+        echo "<h2 style='color: #28A745;'>Thêm sản phẩm thành công!</h2>";
+        echo "<p>Mã hàng: <strong>" . htmlspecialchars($mahang) . "</strong></p>";
+        echo "<a href='manage_products.php' style='display: inline-block; padding: 10px 20px; background: #28A745; color: white; text-decoration: none; border-radius: 5px;'>Xong</a>";
+        echo "</div>";
+        exit;
 
-    // Thêm dữ liệu vào bảng tbmathang
-    $sql = "INSERT INTO tbmathang (mahang, tenhang, mota, dongia, nguongoc, thuonghieu, hinhanh, conhang) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
-    $stmt = $conn->prepare($sql);
-    $stmt->bind_param("sssdssss", $mahang, $tenhang, $mota, $dongia, $nguongoc, $thuonghieu, $hinhanh, $conhang);
-    $stmt->execute();
-
-    // Xử lý tải lên ảnh chi tiết
-    if (isset($_FILES['hinhanh_chitiet']) && !empty($_FILES['hinhanh_chitiet']['name'][0])) {
-        $files = $_FILES['hinhanh_chitiet'];
-        $file_count = count($files['name']);
-
-        for ($i = 0; $i < $file_count; $i++) {
-            $file_name = basename($files['name'][$i]);
-            $target_file = "../assets/images/" . $file_name;
-
-            if (move_uploaded_file($files['tmp_name'][$i], $target_file)) {
-                $sql_hinh = "INSERT INTO tbhinhanhchitiet (mahang, hinhanh_chitiet) VALUES (?, ?)";
-                $stmt_hinh = $conn->prepare($sql_hinh);
-                $stmt_hinh->bind_param("ss", $mahang, $file_name);
-                $stmt_hinh->execute();
-            }
-        }
+    } catch (PDOException $e) {
+        // Xử lý lỗi
+        echo "<div class='container' style='text-align: center; margin-top: 50px;'>";
+        echo "<h2 style='color: #DC3545;'>Lỗi khi thêm sản phẩm:</h2>";
+        echo "<p>" . $e->getMessage() . "</p>";
+        echo "<a href='add_product.php' style='display: inline-block; padding: 10px 20px; background: #007BFF; color: white; text-decoration: none; border-radius: 5px;'>Thử lại</a>";
+        echo "</div>";
+        exit;
     }
-
-   // Thay vì tự động chuyển hướng, hiển thị thông báo thành công cùng với 2 nút
-   echo "<p style='color: green; text-align: center; font-weight: bold;'>Thêm mặt hàng thành công!</p>";
-   echo "<div style='text-align: center; margin-top: 20px;'>";
-   echo "<a href='add_product.php' style='display: inline-block; padding: 10px 20px; background: #007BFF; color: white; text-decoration: none; border-radius: 5px; margin-right: 10px;'>Thêm tiếp</a>";
-   echo "<a href='manage_products.php' style='display: inline-block; padding: 10px 20px; background: #28A745; color: white; text-decoration: none; border-radius: 5px;'>Xong</a>";
-   echo "</div>";
-   exit;
 }
 ?>
 
 <h2 style="text-align: center;">Thêm sản phẩm</h2>
 <form method="post" enctype="multipart/form-data" style="max-width: 500px; margin: auto;">
-    <!-- Hiển thị mã hàng tự động (có thể ẩn nếu không cần admin chỉnh sửa) -->
-    <p style="text-align:center;">Mã hàng sẽ được tạo tự động: <strong><?= getNextProductCode($conn) ?></strong></p>
-    <label>Tên hàng: <input type="text" name="tenhang" required></label><br><br>
-    <label>Mô tả chi tiết: <textarea name="mota"></textarea></label><br><br>
-    <label>Đơn giá: <input type="number" step="0.01" name="dongia" required></label><br><br>
-    <label>Nguồn gốc: <input type="text" name="nguongoc" required></label><br><br>
-    <label>Thương hiệu: <input type="text" name="thuonghieu" required></label><br><br>
-    <label>Hình ảnh chính: <input type="file" name="hinhanh" accept="image/*"></label><br><br>
-
-    <h3>Chi tiết sản phẩm</h3>
-    <label>Ảnh chi tiết: <input type="file" name="hinhanh_chitiet[]" accept="image/*" multiple></label><br><br>
-    <label>Tình trạng:
-        <select name="conhang" required>
-            <option value="Còn hàng">Còn hàng</option>
-            <option value="Hết hàng">Hết hàng</option>
-        </select>
-    </label><br><br>
-
-    <button type="submit">Thêm mặt hàng</button>
+    <p style="text-align:center;">Mã hàng sẽ được tạo tự động: <strong><?= getNextProductCode($pdo) ?></strong></p>
+    <label>Tên hàng: <input type="text" name="tenhang" class="form-control" required></label><br><br>
+    <label>Mô tả chi tiết: <textarea name="mota" class="form-control"></textarea></label><br><br>
+    <label>Đơn giá: <input type="number" step="0.01" name="dongia" class="form-control" required></label><br><br>
+    <label>Nguồn gốc: <input type="text" name="nguongoc" class="form-control" required></label><br><br>
+    <label>Thương hiệu: <input type="text" name="thuonghieu" class="form-control" required></label><br><br>
+    
+    <div class="form-group">
+        <label>Còn hàng:</label><br>
+        <div class="form-check form-check-inline">
+            <input class="form-check-input" type="radio" name="conhang" id="conhang_yes" value="1" checked>
+            <label class="form-check-label" for="conhang_yes">Có</label>
+        </div>
+        <div class="form-check form-check-inline">
+            <input class="form-check-input" type="radio" name="conhang" id="conhang_no" value="0">
+            <label class="form-check-label" for="conhang_no">Không</label>
+        </div>
+    </div>
+    
+    <label>Hình ảnh chính: <input type="file" name="hinhanh" class="form-control-file" accept="image/*" required></label><br><br>
+    
+    <button type="submit" class="btn btn-primary" style="display: block; width: 100%; margin-top: 20px;">Thêm sản phẩm</button>
 </form>

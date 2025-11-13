@@ -1,25 +1,24 @@
-<?php  
+<?php 
 session_start();
-include '../includes/db.php';
+// Sử dụng require_once để đảm bảo file db.php được nhúng thành công và biến $pdo được tạo
+require_once '../includes/db.php'; 
 include '../templates/header.php';
 
 // Tính số lượng sản phẩm duy nhất trong giỏ hàng từ session
 $cart_count = 0;
 if (isset($_SESSION['cart']) && !empty($_SESSION['cart'])) {
-  $cart_count = count($_SESSION['cart']);
+    $cart_count = count($_SESSION['cart']);
 }
 
 // Kiểm tra mã hàng trong URL
 if (isset($_GET['mahang'])) {
     $mahang = trim($_GET['mahang']);
 
-    // Lấy thông tin sản phẩm từ tbmathang
+    // Lấy thông tin sản phẩm từ tbmathang (PDO)
     $sql_product = "SELECT * FROM tbmathang WHERE mahang = ?";
-    $stmt_product = $conn->prepare($sql_product);
-    $stmt_product->bind_param("s", $mahang);
-    $stmt_product->execute();
-    $result_product = $stmt_product->get_result();
-    $product = $result_product->fetch_assoc();
+    $stmt_product = $pdo->prepare($sql_product);
+    $stmt_product->execute([$mahang]);
+    $product = $stmt_product->fetch();
 
     // Kiểm tra xem sản phẩm có tồn tại không
     if (!$product) {
@@ -28,17 +27,18 @@ if (isset($_GET['mahang'])) {
         exit;
     }
 
-    // Lấy ảnh chi tiết từ tbhinhanhchitiet
+    // Lấy ảnh chi tiết từ tbhinhanhchitiet (PDO)
     $sql_images = "SELECT hinhanh_chitiet FROM tbhinhanhchitiet WHERE mahang = ?";
-    $stmt_images = $conn->prepare($sql_images);
-    $stmt_images->bind_param("s", $mahang);
-    $stmt_images->execute();
-    $db_images = $stmt_images->get_result()->fetch_all(MYSQLI_ASSOC);
+    $stmt_images = $pdo->prepare($sql_images);
+    $stmt_images->execute([$mahang]);
+    // fetchAll() sẽ trả về mảng kết hợp nếu đã cấu hình trong db.php
+    $db_images = $stmt_images->fetchAll(); 
 
     // Tạo mảng danh sách ảnh từ DB
     $images = [];
     foreach ($db_images as $row) {
-        $images[] = $row['hinhanh_chitiet'];
+        // Vì trong db.php bạn dùng FETCH_ASSOC, nên vẫn dùng key là tên cột
+        $images[] = $row['hinhanh_chitiet']; 
     }
 
     // Nếu có file JSON lưu thứ tự ảnh, sắp xếp lại theo thứ tự đó
@@ -74,7 +74,6 @@ if (isset($_GET['mahang'])) {
     </div>
     
     <div class="product-content">
-        <!-- Cột bên trái: Ảnh sản phẩm -->
         <div class="product-images">
             <?php if (!empty($images)) { ?>
                 <div class="slideshow-container">
@@ -97,18 +96,15 @@ if (isset($_GET['mahang'])) {
             <?php } ?>
         </div>
 
-        <!-- Cột bên phải: Thông tin sản phẩm, mô tả, tình trạng & nút mua -->
         <div class="product-details">
             <p class="price"><?php echo number_format($product['dongia'], 0); ?> VND</p>
             
-            <!-- Mô tả sản phẩm -->
             <div class="product-description">
                 <div class="description-content">
                     <?php echo nl2br(htmlspecialchars($product['mota'])); ?>
                 </div>
             </div>
             
-            <!-- Container cho tình trạng và nút Thêm vào giỏ hàng trên cùng 1 dòng -->
             <div class="status-add-container">
                 <div class="product-info">
                     <ul class="info-list">
@@ -126,12 +122,10 @@ if (isset($_GET['mahang'])) {
     </div>
 </div>
 
-<!-- Toast Notification -->
 <div class="toast" id="toast">
     <i class="fas fa-check-circle"></i> Sản phẩm đã được thêm vào giỏ hàng!
 </div>
 
-<!-- JavaScript xử lý slideshow và Thêm vào giỏ hàng -->
 <script>
 let slideIndex = 1;
 showSlides(slideIndex);
@@ -179,6 +173,8 @@ document.querySelectorAll('.add-to-cart-btn').forEach(button => {
                 // Cập nhật số đếm giỏ hàng trên header
                 const badge = document.querySelector('.cart-box .cart-count');
                 if (badge) {
+                    // Cảnh báo: Logic này không chính xác 100% vì chưa check trùng lặp, nhưng giữ nguyên theo yêu cầu.
+                    // Để chính xác, cần response từ cart.php trả về số lượng mới.
                     badge.textContent = parseInt(badge.textContent) + 1;
                 } else {
                     const cartLink = document.querySelector('.cart-box .cart-link');
@@ -197,7 +193,7 @@ document.querySelectorAll('.add-to-cart-btn').forEach(button => {
 </script>
 
 <style>
-/* CSS cho trang chi tiết sản phẩm */
+/* CSS cho trang chi tiết sản phẩm (Giữ nguyên) */
 .product-detail-container {
     max-width: 1200px;
     margin: 30px auto;
@@ -515,7 +511,7 @@ document.querySelectorAll('.add-to-cart-btn').forEach(button => {
 </style>
 
 <?php
-// Xử lý thêm/chỉnh sửa đánh giá nếu người dùng gửi form
+// Xử lý thêm/chỉnh sửa đánh giá nếu người dùng gửi form (PDO)
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['review_submit'])) {
     if (isset($_SESSION['username']) && !empty($_SESSION['username'])) {
         $user = $_SESSION['username'];
@@ -523,44 +519,44 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['review_submit'])) {
         $review_content = trim($_POST['review_content']);
         $mahang_review = $mahang;
 
-        // Kiểm tra user đã đánh giá chưa
-        $check_sql = "SELECT id FROM tbreview WHERE mahang=? AND username=?";
-        $stmt_check = $conn->prepare($check_sql);
-        $stmt_check->bind_param("ss", $mahang_review, $user);
-        $stmt_check->execute();
-        $row = $stmt_check->get_result()->fetch_assoc();
+        try {
+            // Kiểm tra user đã đánh giá chưa (PDO)
+            $check_sql = "SELECT id FROM tbreview WHERE mahang=? AND username=?";
+            $stmt_check = $pdo->prepare($check_sql);
+            $stmt_check->execute([$mahang_review, $user]);
+            $row = $stmt_check->fetch();
 
-        if ($row) {
-            // Nếu đã tồn tại thì update
-            $sql = "UPDATE tbreview SET rating=?, content=?, created_at=NOW() WHERE mahang=? AND username=?";
-            $stmt = $conn->prepare($sql);
-            $stmt->bind_param("isss", $rating, $review_content, $mahang_review, $user);
-        } else {
-            // Nếu chưa có đánh giá thì insert mới
-            $sql = "INSERT INTO tbreview (mahang, username, rating, content) VALUES (?, ?, ?, ?)";
-            $stmt = $conn->prepare($sql);
-            $stmt->bind_param("ssis", $mahang_review, $user, $rating, $review_content);
+            if ($row) {
+                // Nếu đã tồn tại thì update (PDO)
+                $sql = "UPDATE tbreview SET rating=?, content=?, created_at=NOW() WHERE mahang=? AND username=?";
+                $stmt = $pdo->prepare($sql);
+                $stmt->execute([$rating, $review_content, $mahang_review, $user]);
+            } else {
+                // Nếu chưa có đánh giá thì insert mới (PDO)
+                $sql = "INSERT INTO tbreview (mahang, username, rating, content) VALUES (?, ?, ?, ?)";
+                $stmt = $pdo->prepare($sql);
+                $stmt->execute([$mahang_review, $user, $rating, $review_content]);
+            }
+            // Refresh để tránh resubmit
+            echo "<script>location.href='" . $_SERVER['REQUEST_URI'] . "';</script>"; 
+            exit;
+        } catch (PDOException $e) {
+            echo "<div style='color:red;text-align:center;margin-bottom:10px;'>Lỗi CSDL: " . $e->getMessage() . "</div>";
         }
-
-        $stmt->execute();
-        echo "<script>location.href='" . $_SERVER['REQUEST_URI'] . "';</script>"; // Refresh để tránh resubmit
-        exit;
     } else {
         echo "<div style='color:red;text-align:center;margin-bottom:10px;'>Bạn cần đăng nhập để đánh giá sản phẩm!</div>";
     }
 }
 
-// Lấy lại đánh giá cũ để edit nếu có
+// Lấy lại đánh giá cũ để edit nếu có (PDO)
 $old_rating = 5;
 $old_content = '';
 $myreview = false;
 if (isset($_SESSION['username'])) {
     $sql_myreview = "SELECT rating, content FROM tbreview WHERE mahang=? AND username=?";
-    $stmt_myreview = $conn->prepare($sql_myreview);
-    $stmt_myreview->bind_param("ss", $mahang, $_SESSION['username']);
-    $stmt_myreview->execute();
-    $res_myreview = $stmt_myreview->get_result();
-    if ($rowreview = $res_myreview->fetch_assoc()) {
+    $stmt_myreview = $pdo->prepare($sql_myreview);
+    $stmt_myreview->execute([$mahang, $_SESSION['username']]);
+    if ($rowreview = $stmt_myreview->fetch()) {
         $old_rating = intval($rowreview['rating']);
         $old_content = $rowreview['content'];
         $myreview = true;
@@ -568,7 +564,6 @@ if (isset($_SESSION['username'])) {
 }
 ?>
 
-<!-- KHU VỰC ĐÁNH GIÁ SẢN PHẨM -->
 <div class="review-section">
     <h3>Đánh giá sản phẩm</h3>
     <?php if (isset($_SESSION['username'])): ?>
@@ -586,17 +581,17 @@ if (isset($_SESSION['username'])) {
         <div class="review-login-notice">Vui lòng <a href="login.php">đăng nhập</a> để đánh giá sản phẩm.</div>
     <?php endif; ?>
 
-    <!-- HIỂN THỊ DANH SÁCH ĐÁNH GIÁ -->
     <div class="review-list">
         <h4>Nhận xét của khách hàng</h4>
         <?php
         $sql_reviews = "SELECT r.*, u.username FROM tbreview r JOIN tbuser u ON r.username=u.username WHERE r.mahang=? ORDER BY r.created_at DESC";
-        $stmt_reviews = $conn->prepare($sql_reviews);
-        $stmt_reviews->bind_param("s", $mahang);
-        $stmt_reviews->execute();
-        $result_reviews = $stmt_reviews->get_result();
-        if ($result_reviews->num_rows > 0) {
-            while ($review = $result_reviews->fetch_assoc()) {
+        $stmt_reviews = $pdo->prepare($sql_reviews);
+        $stmt_reviews->execute([$mahang]);
+        
+        $reviews = $stmt_reviews->fetchAll(); // Lấy tất cả kết quả một lần
+
+        if (count($reviews) > 0) {
+            foreach ($reviews as $review) {
                 echo '<div class="review-item">';
                 echo '<div class="review-header">';
                 echo '<span class="review-user">'.htmlspecialchars($review['username']).'</span>';

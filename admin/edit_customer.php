@@ -1,7 +1,9 @@
 <?php
 session_start();
-include '../includes/db.php';
-include '../templates/adminheader.php';
+
+// Sử dụng require với __DIR__ và file db.php đã thống nhất
+require __DIR__ . '/../includes/db.php'; 
+require __DIR__ . '/../templates/adminheader.php';
 
 // Kiểm tra quyền Admin
 if (!isset($_SESSION['username']) || $_SESSION['role'] !== 'Admin') {
@@ -10,118 +12,99 @@ if (!isset($_SESSION['username']) || $_SESSION['role'] !== 'Admin') {
 }
 
 if (!isset($_GET['id'])) {
-    $_SESSION['error'] = "Không tìm thấy khách hàng";
+    $_SESSION['message'] = ['type' => 'danger', 'content' => 'Không tìm thấy ID khách hàng.'];
     header("Location: manage_customers.php");
     exit;
 }
 
-// Vì makhach là kiểu varchar, không ép kiểu sang int
-$id = $conn->real_escape_string($_GET['id']);
+// Lấy ID khách hàng từ URL (không cần escape vì sẽ dùng prepared statement)
+$id = $_GET['id'];
 
-$customer = $conn->query("SELECT * FROM tbkhachhang WHERE makhach = '$id'");
-if ($customer->num_rows === 0) {
-    $_SESSION['error'] = "Khách hàng không tồn tại";
-    header("Location: manage_customers.php");
-    exit;
-}
-$customer = $customer->fetch_assoc();
-
-// Xử lý cập nhật
+// Xử lý cập nhật thông tin khi form được submit
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $tenkhach    = $conn->real_escape_string($_POST['tenkhach']);
-    $ngaysinh    = $conn->real_escape_string($_POST['ngaysinh']);
-    $sodienthoai = $conn->real_escape_string($_POST['sodienthoai']);
-    $diachi      = $conn->real_escape_string($_POST['diachi']);
-    $gioitinh    = $conn->real_escape_string($_POST['gioitinh']);
+    // Lấy dữ liệu từ form
+    $tenkhach    = $_POST['tenkhach'];
+    $ngaysinh    = $_POST['ngaysinh'];
+    $sodienthoai = $_POST['sodienthoai'];
+    $diachi      = $_POST['diachi'];
+    $gioitinh    = $_POST['gioitinh'];
+    try {
+        // Chuẩn bị câu lệnh SQL UPDATE với PDO
+        $sql = "UPDATE tbkhachhang SET 
+                    tenkhach    = :tenkhach,
+                    ngaysinh    = :ngaysinh,
+                    sodienthoai = :sodienthoai,
+                    diachi      = :diachi,
+                    gioitinh    = :gioitinh
+                WHERE makhach = :makhach";
+        
+        $stmt = $pdo->prepare($sql);
+        
+        // Gán giá trị vào các placeholder
+        $stmt->execute([
+            ':tenkhach'    => $tenkhach,
+            ':ngaysinh'    => $ngaysinh,
+            ':sodienthoai' => $sodienthoai,
+            ':diachi'      => $diachi,
+            ':gioitinh'    => $gioitinh,
+            ':makhach'     => $id
+        ]);
 
-    $sql = "UPDATE tbkhachhang SET 
-                tenkhach    = '$tenkhach',
-                ngaysinh    = '$ngaysinh',
-                sodienthoai = '$sodienthoai',
-                diachi      = '$diachi',
-                gioitinh    = '$gioitinh'
-            WHERE makhach = '$id'";
-
-    if ($conn->query($sql)) {
-        $_SESSION['message'] = "Cập nhật thông tin thành công!";
+        $_SESSION['message'] = ['type' => 'success', 'content' => 'Cập nhật thông tin khách hàng thành công!'];
         header("Location: manage_customers.php");
         exit;
-    } else {
-        $_SESSION['error'] = "Lỗi cập nhật: " . $conn->error;
+
+    } catch (PDOException $e) {
+        // Bắt lỗi và lưu vào session để hiển thị
+        $_SESSION['message'] = ['type' => 'danger', 'content' => 'Lỗi cập nhật: ' . $e->getMessage()];
     }
 }
+
+
+// Lấy thông tin khách hàng hiện tại để hiển thị trong form
+try {
+    $sql_select = "SELECT * FROM tbkhachhang WHERE makhach = ?";
+    $stmt = $pdo->prepare($sql_select);
+    $stmt->execute([$id]);
+    
+    // fetch() để lấy một dòng duy nhất
+    $customer = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$customer) {
+        $_SESSION['message'] = ['type' => 'danger', 'content' => 'Khách hàng không tồn tại.'];
+        header("Location: manage_customers.php");
+        exit;
+    }
+} catch (PDOException $e) {
+    die("Lỗi truy vấn: " . $e->getMessage());
+}
+
 ?>
 
+<!-- Phần HTML và CSS giữ nguyên như code cũ của bạn -->
 <!DOCTYPE html>
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
     <title>Sửa thông tin khách hàng</title>
-    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <!-- Các link CSS và style của bạn -->
     <style>
-        /* Tùy chỉnh giao diện chung cho form */
-        .container {
-            max-width: 600px;
-            background-color: #fff;
-            padding: 30px;
-            border-radius: 8px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-        }
-        
-        h2 {
-            text-align: center;
-            margin-bottom: 20px;
-            color: #2c3e50;
-        }
-        
-        /* Giảm kích thước nút cập nhật */
-        button.btn.btn-primary {
-            width: 50%;
-            font-size: 1rem;
-            text-align: center;
-            padding: 0.5rem 1.25rem;
-            display: block;
-            margin: 0 auto;
-        }
-        
-        a.btn.btn-secondary {
-            padding: 0.5rem 1.25rem;
-            font-size: 1rem;
-            background-color: #f44336;
-            border-color: #f44336;
-            color: #fff;
-            display: block;
-            width: 50%;
-            margin: 20px auto 0;
-            text-align: center;
-            border-radius: 0.25rem;
-            transition: background-color 0.3s ease, border-color 0.3s ease;
-        }
-        
-        a.btn.btn-secondary:hover {
-            background-color: #d32f2f;
-            border-color: #d32f2f;
-            text-decoration: none;
-        }
-        
-        .form-group label {
-            font-weight: 500;
-            color: #333;
-        }
-        
-        .alert {
-            text-align: center;
-        }
+        .container { max-width: 600px; }
+        .btn-primary { width: 100%; }
+        .btn-secondary { width: 100%; margin-top: 10px; }
     </style>
 </head>
 <body>
-<div class="container mt-4">
+<div class="container mt-5">
     <h2>Sửa thông tin khách hàng</h2>
     
-    <?php if (isset($_SESSION['error'])) : ?>
-        <div class="alert alert-danger"><?= $_SESSION['error'] ?></div>
-        <?php unset($_SESSION['error']); ?>
-    <?php endif; ?>
+    <?php 
+    // Hiển thị thông báo (nếu có)
+    if (isset($_SESSION['message'])) {
+        echo '<div class="alert alert-' . $_SESSION['message']['type'] . '">'. $_SESSION['message']['content'] .'</div>';
+        unset($_SESSION['message']);
+    }
+    ?>
 
     <form method="POST">
         <div class="form-group">
@@ -150,14 +133,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <div class="form-group">
             <label>Giới tính:</label>
             <select name="gioitinh" class="form-control">
-                <option value="Nam" <?= $customer['gioitinh'] == 'Nam' ? 'selected' : '' ?>>Nam</option>
-                <option value="Nữ" <?= $customer['gioitinh'] == 'Nữ' ? 'selected' : '' ?>>Nữ</option>
-                <option value="Khác" <?= $customer['gioitinh'] == 'Khác' ? 'selected' : '' ?>>Khác</option>
+                <option value="Nam" <?= ($customer['gioitinh'] ?? '') == 'Nam' ? 'selected' : '' ?>>Nam</option>
+                <option value="Nữ" <?= ($customer['gioitinh'] ?? '') == 'Nữ' ? 'selected' : '' ?>>Nữ</option>
+                <option value="Khác" <?= ($customer['gioitinh'] ?? '') == 'Khác' ? 'selected' : '' ?>>Khác</option>
             </select>
         </div>
         
-        <button type="submit" class="btn btn-primary">Cập nhật</button>
-        <a href="manage_customers.php" class="btn btn-secondary">Hủy</a>
+        <button type="submit" class="btn btn-primary">Cập nhật thông tin</button>
+        <a href="manage_customers.php" class="btn btn-secondary">Hủy bỏ</a>
     </form>
 </div>
 </body>

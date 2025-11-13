@@ -1,7 +1,8 @@
 <?php
 session_start();
-include '../includes/db.php';
-include '../templates/adminheader.php';
+// Đồng bộ hóa đường dẫn include/require theo các file khác
+require __DIR__ . '/../includes/db.php';
+require __DIR__ . '/../templates/adminheader.php';
 
 // Kiểm tra quyền Admin
 if (!isset($_SESSION['username']) || $_SESSION['role'] !== 'Admin') {
@@ -9,40 +10,76 @@ if (!isset($_SESSION['username']) || $_SESSION['role'] !== 'Admin') {
     exit;
 }
 
-// Khởi tạo biến $search
-$search = isset($_GET['search']) ? $_GET['search'] : '';
-
-// Xử lý tìm kiếm
-$where = '';
-if (!empty($search)) {
-    $search = $conn->real_escape_string($search);
-    $where = "WHERE tenkhach LIKE '%$search%' 
-              OR sodienthoai LIKE '%$search%' 
-              OR diachi LIKE '%$search%' 
-              OR makhach LIKE '%$search%'";
+// Kiểm tra kết nối PDO
+if (!isset($pdo)) {
+    die("Lỗi: Không thể kết nối CSDL (PDO). Vui lòng kiểm tra file includes/db.php.");
 }
+
+// Khởi tạo biến $search
+$search = isset($_GET['search']) ? trim($_GET['search']) : '';
 
 // Phân trang
 $limit = 10;
 $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
 $offset = ($page - 1) * $limit;
 
-// Truy vấn tổng số khách hàng
-$total_query = $conn->query("SELECT COUNT(*) AS total FROM tbkhachhang $where");
-if (!$total_query) {
-    die("Lỗi truy vấn: " . $conn->error);
+// Xây dựng mệnh đề WHERE và danh sách tham số (PDO)
+$where = 'WHERE 1=1';
+$params = [];
+
+if (!empty($search)) {
+    // Thêm các điều kiện tìm kiếm và sử dụng placeholder '?'
+    $where .= " AND (tenkhach LIKE ? OR sodienthoai LIKE ? OR diachi LIKE ? OR makhach LIKE ?)";
+    $likeSearch = "%" . $search . "%";
+    
+    // Thêm tham số tìm kiếm (cần lặp lại 4 lần cho 4 điều kiện LIKE)
+    $params = [$likeSearch, $likeSearch, $likeSearch, $likeSearch];
 }
-$total_row = $total_query->fetch_assoc();
-$total_customers = $total_row['total'];
+
+// 1. Truy vấn tổng số khách hàng (PDO)
+$total_customers = 0;
+try {
+    $sql_count = "SELECT COUNT(*) AS total FROM tbkhachhang {$where}";
+    $stmt_count = $pdo->prepare($sql_count);
+    $stmt_count->execute($params); // Truyền các tham số tìm kiếm
+    $total_customers = $stmt_count->fetchColumn(); // Lấy trực tiếp cột COUNT
+} catch (PDOException $e) {
+    die("Lỗi truy vấn tổng số: " . $e->getMessage());
+}
+
 $total_pages = ceil($total_customers / $limit);
 
-// Truy vấn dữ liệu khách hàng
-$result = $conn->query("SELECT makhach, tenkhach, ngaysinh, sodienthoai, diachi, gioitinh, username 
-                        FROM tbkhachhang 
-                        $where
-                        LIMIT $limit OFFSET $offset");
-if (!$result) {
-    die("Lỗi truy vấn: " . $conn->error);
+// 2. Truy vấn dữ liệu khách hàng (PDO)
+$customers = [];
+$sql_data = "SELECT makhach, tenkhach, ngaysinh, sodienthoai, diachi, gioitinh, username 
+             FROM tbkhachhang 
+             {$where}
+             LIMIT :limit OFFSET :offset";
+             
+try {
+    $stmt = $pdo->prepare($sql_data);
+
+    // Bind các tham số tìm kiếm (vị trí)
+    $paramIndex = 1;
+    foreach ($params as $paramValue) {
+        $stmt->bindValue($paramIndex++, $paramValue, PDO::PARAM_STR);
+    }
+    
+    // Bind các tham số phân trang (đặt tên)
+    $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+    $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+
+    $stmt->execute();
+    $customers = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+} catch (PDOException $e) {
+    die("Lỗi truy vấn dữ liệu: " . $e->getMessage());
+}
+
+// Xử lý trường hợp truy cập trang vượt giới hạn
+if ($page > $total_pages && $total_pages > 0) {
+    header("Location: manage_customers.php?page={$total_pages}&search=" . urlencode($search));
+    exit;
 }
 ?>
 
@@ -195,7 +232,6 @@ if (!$result) {
     <div class="container">
         <h2>Quản lý khách hàng</h2>
 
-        <!-- Thanh tìm kiếm -->
         <form method="GET" class="mb-4">
             <div class="input-group">
                 <input type="text" name="search" class="form-control"
@@ -208,18 +244,26 @@ if (!$result) {
             </div>
         </form>
 
-        <!-- Thông báo -->
         <?php if (isset($_SESSION['message'])) : ?>
-            <div class="alert alert-success"><?= $_SESSION['message'] ?></div>
+            <?php 
+            $msg = $_SESSION['message'];
+            
+            // Nếu message là array (theo cấu trúc ['type' => 'success', 'content' => '...'])
+            if (is_array($msg) && isset($msg['content'])) {
+                $type = $msg['type'] ?? 'success'; // Mặc định là 'success'
+                $content = $msg['content'];
+            } else {
+                // Nếu message là chuỗi đơn giản (tương thích ngược) hoặc không phải string
+                $type = 'success';
+                $content = is_string($msg) ? $msg : 'Lỗi hiển thị thông báo: Dữ liệu không hợp lệ.';
+            }
+            ?>
+            <div class="alert alert-<?= htmlspecialchars($type) ?>">
+                <?= htmlspecialchars($content) ?>
+            </div>
             <?php unset($_SESSION['message']); ?>
         <?php endif; ?>
 
-        <?php if (isset($_SESSION['error'])) : ?>
-            <div class="alert alert-danger"><?= $_SESSION['error'] ?></div>
-            <?php unset($_SESSION['error']); ?>
-        <?php endif; ?>
-
-        <!-- Bảng dữ liệu -->
         <table class="table table-bordered">
             <thead>
                 <tr>
@@ -233,8 +277,8 @@ if (!$result) {
                 </tr>
             </thead>
             <tbody>
-                <?php if ($result->num_rows > 0) : ?>
-                    <?php while ($row = $result->fetch_assoc()) : ?>
+                <?php if (!empty($customers)) : // Sử dụng mảng $customers từ PDO ?>
+                    <?php foreach ($customers as $row) : // Lặp qua mảng kết quả ?>
                         <tr>
                             <td><?= htmlspecialchars($row['makhach']) ?></td>
                             <td><?= htmlspecialchars($row['tenkhach']) ?></td>
@@ -247,11 +291,10 @@ if (!$result) {
                             <td><?= htmlspecialchars($row['diachi']) ?></td>
                             <td><?= htmlspecialchars($row['gioitinh']) ?></td>
                             <td>
-                                <a href="edit_customer.php?id=<?= $row['makhach'] ?>" class="btn btn-warning btn-sm">Sửa</a>
-                                <!-- Bỏ chức năng xoá -->
-                            </td>
+                                <a href="edit_customer.php?id=<?= urlencode($row['makhach']) ?>" class="btn btn-warning btn-sm">Sửa</a>
+                                </td>
                         </tr>
-                    <?php endwhile; ?>
+                    <?php endforeach; ?>
                 <?php else : ?>
                     <tr>
                         <td colspan="7" class="text-center">Không có dữ liệu khách hàng.</td>
@@ -260,7 +303,6 @@ if (!$result) {
             </tbody>
         </table>
 
-        <!-- Phân trang -->
         <nav>
             <ul class="pagination">
                 <?php if ($page > 1) : ?>

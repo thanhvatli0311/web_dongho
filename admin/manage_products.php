@@ -1,7 +1,8 @@
 <?php
 session_start();
-include '../includes/db.php';
-include '../templates/adminheader.php';
+// Đồng bộ hóa đường dẫn include/require theo file chatbot_manager.php
+require __DIR__ . '/../includes/db.php';
+require __DIR__ . '/../templates/adminheader.php';
 
 // Kiểm tra nếu chưa đăng nhập hoặc không phải Admin thì chuyển hướng
 if (!isset($_SESSION['username']) || $_SESSION['role'] !== 'Admin') {
@@ -9,13 +10,25 @@ if (!isset($_SESSION['username']) || $_SESSION['role'] !== 'Admin') {
     exit;
 }
 
-// Xử lý xóa sản phẩm
+// Kiểm tra biến $pdo (đối tượng kết nối PDO)
+if (!isset($pdo)) {
+    die("Lỗi: Không thể kết nối CSDL (PDO). Vui lòng kiểm tra file includes/db.php.");
+}
+
+// Xử lý xóa sản phẩm (Chuyển sang PDO)
 if (isset($_GET['delete'])) {
     $id = $_GET['delete'];
-    $sql = "DELETE FROM tbmathang WHERE mahang = ?";
-    $stmt = $conn->prepare($sql);
-    $stmt->bind_param("s", $id);
-    $stmt->execute();
+    try {
+        $sql = "DELETE FROM tbmathang WHERE mahang = ?";
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute([$id]);
+        $_SESSION['message'] = ['type' => 'success', 'content' => 'Sản phẩm đã được xóa thành công.'];
+    } catch (PDOException $e) {
+        $_SESSION['message'] = ['type' => 'danger', 'content' => 'Lỗi xóa sản phẩm: ' . $e->getMessage()];
+    }
+    // Chuyển hướng để xóa tham số 'delete' trên URL và hiển thị thông báo (nếu có)
+    header("Location: manage_products.php");
+    exit;
 }
 
 // Lấy từ khóa tìm kiếm
@@ -26,32 +39,56 @@ $limit = 10;
 $page = isset($_GET['page']) ? (int) $_GET['page'] : 1;
 $offset = ($page - 1) * $limit;
 
-// Nếu có tìm kiếm thì dùng prepared statement
+$where = "";
+$params = [];
+
+// Nếu có tìm kiếm thì dùng prepared statement (PDO)
 if ($search !== "") {
     $likeSearch = "%" . $search . "%";
+    $where = " WHERE tenhang LIKE ? ";
+    $params[] = $likeSearch;
+}
 
-    // Tính tổng số sản phẩm theo từ khóa
-    $stmtCount = $conn->prepare("SELECT COUNT(*) as total FROM tbmathang WHERE tenhang LIKE ?");
-    $stmtCount->bind_param("s", $likeSearch);
-    $stmtCount->execute();
-    $resultCount = $stmtCount->get_result();
-    $total = $resultCount->fetch_assoc()['total'];
-
-    // Truy vấn sản phẩm có tìm kiếm với phân trang
-    $stmt = $conn->prepare("SELECT * FROM tbmathang WHERE tenhang LIKE ? LIMIT ? OFFSET ?");
-    $stmt->bind_param("sii", $likeSearch, $limit, $offset);
-    $stmt->execute();
-    $result = $stmt->get_result();
-} else {
-    // Tính tổng số sản phẩm
-    $resultCount = $conn->query("SELECT COUNT(*) as total FROM tbmathang");
-    $total = $resultCount->fetch_assoc()['total'];
-
-    // Truy vấn sản phẩm với phân trang
-    $result = $conn->query("SELECT * FROM tbmathang LIMIT $limit OFFSET $offset");
+// 1. Tính tổng số sản phẩm (PDO)
+try {
+    $stmtCount = $pdo->prepare("SELECT COUNT(*) as total FROM tbmathang {$where}");
+    $stmtCount->execute($params);
+    $total = $stmtCount->fetch(PDO::FETCH_ASSOC)['total'] ?? 0;
+} catch (PDOException $e) {
+    die("Lỗi truy vấn tổng số: " . $e->getMessage());
 }
 
 $total_pages = ceil($total / $limit);
+
+// 2. Truy vấn dữ liệu sản phẩm với phân trang (PDO)
+$sql = "SELECT * FROM tbmathang {$where} LIMIT :limit OFFSET :offset";
+try {
+    $stmt = $pdo->prepare($sql);
+    
+    // Bind các tham số LIMIT và OFFSET (cần bindValue vì kiểu dữ liệu là INT)
+    $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+    $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+
+    // Bind tham số tìm kiếm
+    $param_index = 1;
+    foreach ($params as $value) {
+        $stmt->bindValue($param_index++, $value, PDO::PARAM_STR);
+    }
+
+    $stmt->execute();
+    $products = $stmt->fetchAll(PDO::FETCH_ASSOC); // Lấy tất cả dữ liệu vào mảng $products
+    
+} catch (PDOException $e) {
+    die("Lỗi truy vấn dữ liệu: " . $e->getMessage());
+}
+
+// Xử lý trường hợp người dùng truy cập trang quá giới hạn (ví dụ: page=10 khi chỉ có 5 trang)
+if ($page > $total_pages && $total_pages > 0) {
+    header("Location: manage_products.php?page={$total_pages}&search=" . urlencode($search));
+    exit;
+}
+
+// Biến $products sẽ chứa mảng kết quả, thay thế cho đối tượng $result của MySQLi
 ?>
 
 <!DOCTYPE html>
@@ -60,7 +97,6 @@ $total_pages = ceil($total / $limit);
 <head>
     <meta charset="UTF-8">
     <title>Quản lý sản phẩm</title>
-    <!-- Sử dụng Bootstrap để đồng nhất giao diện -->
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
     <style>
         body {
@@ -151,12 +187,10 @@ $total_pages = ceil($total / $limit);
     <div class="container-custom">
         <h2>Quản lý sản phẩm</h2>
 
-        <!-- Nút Thêm Sản Phẩm căn giữa -->
         <div class="add-product-container">
             <a href="../admin/add_product.php" class="btn btn-success">Thêm sản phẩm</a>
         </div>
 
-        <!-- Thanh tìm kiếm -->
         <form class="search-form mb-4" action="" method="GET">
             <div class="input-group">
                 <input type="text" name="search" class="form-control" placeholder="Tìm kiếm sản phẩm..."
@@ -168,7 +202,6 @@ $total_pages = ceil($total / $limit);
             </div>
         </form>
 
-        <!-- Bảng dữ liệu sản phẩm -->
         <table class="table table-bordered">
             <thead>
                 <tr>
@@ -179,20 +212,18 @@ $total_pages = ceil($total / $limit);
                 </tr>
             </thead>
             <tbody>
-                <?php if ($result->num_rows > 0) : ?>
-                    <?php while ($row = $result->fetch_assoc()) : ?>
+                <?php if (!empty($products)) : // Dùng !empty($products) để kiểm tra mảng kết quả ?>
+                    <?php foreach ($products as $row) : // Lặp qua mảng kết quả $products ?>
                         <tr>
                             <td><?= htmlspecialchars($row['mahang']) ?></td>
                             <td><?= htmlspecialchars($row['tenhang']) ?></td>
-                            <!-- Hiển thị đơn giá không có phần thập phân -->
-                            <td><?= number_format($row['dongia'], 0) ?> VND</td>
+                            <td><?= number_format($row['dongia'], 0, ',', '.') ?> VND</td>
                             <td>
-                                <!-- Sửa: sử dụng btn-warning btn-sm để giống nút sửa của khách hàng -->
                                 <a href="../admin/edit_product.php?id=<?= urlencode($row['mahang']) ?>" class="btn btn-warning btn-sm">Sửa</a>
                                 <a href="?delete=<?= urlencode($row['mahang']) ?>" class="btn btn-danger btn-sm" onclick="return confirm('Xác nhận xóa?')">Xóa</a>
                             </td>
                         </tr>
-                    <?php endwhile; ?>
+                    <?php endforeach; ?>
                 <?php else : ?>
                     <tr>
                         <td colspan="4" class="text-center">Không có dữ liệu sản phẩm.</td>
@@ -201,7 +232,6 @@ $total_pages = ceil($total / $limit);
             </tbody>
         </table>
 
-        <!-- Phân trang -->
         <nav>
             <ul class="pagination justify-content-center">
                 <?php if ($page > 1) : ?>

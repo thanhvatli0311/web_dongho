@@ -978,3 +978,27 @@ color: #dc3545;
 text-align: center;
 margin-bottom: 1rem;
 }
+
+.btn-back {
+    display: inline-block;
+    background-color: #007bff;       /* Màu xanh chủ đạo */
+    color: white;
+    padding: 10px 20px;
+    border-radius: 8px;
+    text-decoration: none;
+    font-size: 16px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 8px rgba(0, 123, 255, 0.2);
+}
+
+.btn-back:hover {
+    background-color: #0056b3;       /* Xanh đậm hơn khi hover */
+    transform: translateY(-2px);     /* Nổi lên nhẹ */
+    box-shadow: 0 6px 12px rgba(0, 123, 255, 0.3);
+}
+
+.btn-back:active {
+    transform: translateY(0);        /* Nhấn xuống */
+    box-shadow: 0 2px 4px rgba(0, 123, 255, 0.2);
+}

@@ -1,10 +1,11 @@
 <?php
 ob_start(); 
 session_start();
-include '../includes/db.php';
+// Sử dụng require_once để đảm bảo file db.php được nhúng thành công và biến $pdo được tạo
+require_once '../includes/db.php'; 
 include '../templates/header.php';
 
-// Thêm mặt hàng vào giỏ (từ GET)
+// Thêm mặt hàng vào giỏ (từ GET - Cần cảnh báo: nên dùng POST cho hành động này để tránh CSRF)
 if (isset($_GET['add_to_cart'])) {
     $item_id = $_GET['add_to_cart'];
     $quantity = 1;
@@ -21,7 +22,7 @@ if (isset($_GET['add_to_cart'])) {
     exit;
 }
 
-// Xóa mặt hàng khỏi giỏ
+// Xóa mặt hàng khỏi giỏ (từ GET - Cần cảnh báo: nên dùng POST cho hành động này để tránh CSRF)
 if (isset($_GET['remove_from_cart'])) {
     $item_id = $_GET['remove_from_cart'];
     unset($_SESSION['cart'][$item_id]);
@@ -30,12 +31,12 @@ if (isset($_GET['remove_from_cart'])) {
 }
 ?>
 
-<!-- Link FontAwesome -->
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" 
       integrity="sha512-Fo3rlrZj/k7ujTnHg4CGR2DhKNd3T/s9s2rzt5CfBmRZJ9IcnTE9jxQlQlMkHOMfJfI8N7d19S8k58G5FVhUXA==" 
       crossorigin="anonymous" referrerpolicy="no-referrer" />
 
 <style>
+    /* CSS code remains unchanged */
     .cart-container {
         max-width: 900px;
         margin: 20px auto;
@@ -184,34 +185,44 @@ if (isset($_GET['remove_from_cart'])) {
     <?php if (!empty($_SESSION['cart'])): ?>
         <?php
             $total_price = 0;
+            // Thay đổi code truy vấn CSDL từ MySQLi sang PDO
             foreach ($_SESSION['cart'] as $item_id => $item):
                 $product_sql = "SELECT * FROM tbmathang WHERE mahang = ?";
-                $stmt = $conn->prepare($product_sql);
-                $stmt->bind_param("s", $item_id);
-                $stmt->execute();
-                $product_result = $stmt->get_result();
-                $product = $product_result->fetch_assoc();
+                
+                // >>> FIX 1: Dùng $pdo thay vì $conn
+                $stmt = $pdo->prepare($product_sql); 
+                
+                // >>> FIX 2: Dùng PDO execute với mảng tham số
+                // Tham số $item_id là biến string, nên không cần cast type
+                $stmt->execute([$item_id]); 
+                
+                // >>> FIX 3: Dùng PDO fetch() để lấy kết quả (PDO::FETCH_ASSOC đã là mặc định)
+                $product = $stmt->fetch();
+                
                 if (!$product) continue;
                 
                 $quantity = (int)$item['quantity'];
                 $unit_price = (float)$product['dongia'];
                 $price = $unit_price * $quantity;
+                
                 // Nếu tồn tại trạng thái checkbox trong session, dùng nó; nếu không mặc định true
-                $checked = isset($item['checked']) ? $item['checked'] : true;
-                $total_price += $price;
+                $checked = isset($item['checked']) ? (bool)$item['checked'] : true;
+                
+                // >>> FIX LỖI LOGIC: Chỉ cộng tổng nếu sản phẩm được chọn thanh toán
+                if ($checked) {
+                    $total_price += $price;
+                }
+                
                 $image = isset($product['hinhanh']) && !empty($product['hinhanh']) ? $product['hinhanh'] : 'placeholder.png';
         ?>
             <div class="cart-item" data-item-id="<?php echo htmlspecialchars($item_id); ?>" data-unit-price="<?php echo $unit_price; ?>">
-                <!-- Cột checkbox -->
                 <div class="checkbox-column">
                     <input type="checkbox" class="product-check" id="check-<?php echo htmlspecialchars($item_id); ?>" 
-                           data-item-id="<?php echo htmlspecialchars($item_id); ?>" <?php echo $checked ? 'checked' : ''; ?>>
+                            data-item-id="<?php echo htmlspecialchars($item_id); ?>" <?php echo $checked ? 'checked' : ''; ?>>
                 </div>
-                <!-- Cột nội dung sản phẩm -->
                 <div class="item-content">
-                    <!-- Bao bọc link đến trang chi tiết sản phẩm -->
                     <a href="product_detail.php?mahang=<?php echo urlencode($item_id); ?>" style="display: flex; align-items: center; text-decoration: none; color: inherit;">
-                        <img src="../assets/images/<?php echo $image; ?>" alt="<?php echo htmlspecialchars($product['tenhang']); ?>">
+                        <img src="../assets/images/<?php echo htmlspecialchars($image); ?>" alt="<?php echo htmlspecialchars($product['tenhang']); ?>">
                         <div class="item-details">
                             <h3><?php echo htmlspecialchars($product['tenhang']); ?></h3>
                             <p>Đơn giá: <?php echo number_format($unit_price, 0); ?> VND</p>
@@ -221,15 +232,14 @@ if (isset($_GET['remove_from_cart'])) {
                         </div>
                     </a>
                 </div>
-                <!-- Cột thao tác -->
                 <div class="actions-column">
                     <div class="quantity-controls">
                         <button type="button" class="qty-decrease" data-target="qty-<?php echo htmlspecialchars($item_id); ?>">
                             <i class="fas fa-minus"></i>
                         </button>
                         <input type="number" id="qty-<?php echo htmlspecialchars($item_id); ?>" 
-                               name="quantities[<?php echo htmlspecialchars($item_id); ?>]" 
-                               value="<?php echo $quantity; ?>" min="1" data-unit-price="<?php echo $unit_price; ?>">
+                                name="quantities[<?php echo htmlspecialchars($item_id); ?>]" 
+                                value="<?php echo $quantity; ?>" min="1" data-unit-price="<?php echo $unit_price; ?>">
                         <button type="button" class="qty-increase" data-target="qty-<?php echo htmlspecialchars($item_id); ?>">
                             <i class="fas fa-plus"></i>
                         </button>
@@ -254,6 +264,7 @@ if (isset($_GET['remove_from_cart'])) {
 </div>
 
 <script>
+    // Javascript code remains unchanged
     // Hàm định dạng số tiền theo chuẩn Việt Nam
     function formatCurrency(value) {
         return parseInt(value).toLocaleString('vi-VN');

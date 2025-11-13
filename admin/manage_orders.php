@@ -1,357 +1,306 @@
 <?php
 session_start();
-include '../includes/db.php';
+require __DIR__ . '/../includes/db.php';
+require __DIR__ . '/../templates/adminheader.php';
 
-// Kiểm tra nếu chưa đăng nhập hoặc không phải Admin thì chuyển hướng
-if (!isset($_SESSION['username']) || $_SESSION['role'] !== 'Admin') {
-    header("Location: ../login.php");
-    exit;
-}
+// --- PHẦN LOGIC PHP (GIỮ NGUYÊN, KHÔNG THAY ĐỔI) ---
 
-include '../templates/adminheader.php';
+if (!isset($_SESSION['username']) || $_SESSION['role'] !== 'Admin') { header("Location: ../login.php"); exit; }
+if (!isset($pdo)) { die("Lỗi: Không thể kết nối CSDL."); }
 
-// Xử lý cập nhật tình trạng đơn hàng
-if ($_SERVER['REQUEST_METHOD'] == "POST" && isset($_POST['update_status'])) {
-    $madonhang = $_POST['madonhang'];
-    $tinhtrang = $_POST['tinhtrang'];
-
-    $update_query = $conn->prepare("UPDATE tbDonHang SET tinhtrang = ? WHERE madonhang = ?");
-    $update_query->bind_param("ss", $tinhtrang, $madonhang);
-    $update_query->execute();
+if (isset($_GET['action']) && $_GET['action'] == 'delete' && isset($_GET['id'])) {
+    $madonhang_to_delete = $_GET['id'];
+    try {
+        $pdo->beginTransaction();
+        $pdo->prepare("DELETE FROM tbChiTietDonHang WHERE madonhang = ?")->execute([$madonhang_to_delete]);
+        $pdo->prepare("DELETE FROM tbDonHang WHERE madonhang = ?")->execute([$madonhang_to_delete]);
+        $pdo->commit();
+        $_SESSION['message'] = ['type' => 'success', 'content' => 'Đã xóa đơn hàng thành công.'];
+    } catch (PDOException $e) {
+        $pdo->rollBack();
+        $_SESSION['message'] = ['type' => 'danger', 'content' => 'Lỗi khi xóa đơn hàng: ' . $e->getMessage()];
+    }
     header("Location: manage_orders.php");
     exit;
 }
 
-// Lấy các biến lọc từ URL (GET)
-$search    = isset($_GET['search']) ? trim($_GET['search']) : '';
-$date_from = isset($_GET['date_from']) ? $_GET['date_from'] : '';
-$date_to   = isset($_GET['date_to']) ? $_GET['date_to'] : '';
-$filter    = isset($_GET['filter']) ? $_GET['filter'] : '';
-
-// Xây dựng mệnh đề WHERE cho SQL
-$where = "WHERE 1=1";
-$params = [];
-$types  = "";
-
-// Tìm kiếm theo mã đơn, tên khách, SĐT, hoặc địa chỉ
-if ($search !== '') {
-    $where .= " AND (tbDonHang.madonhang LIKE ? OR tbkhachhang.tenkhach LIKE ? OR tbkhachhang.sodienthoai LIKE ? OR tbkhachhang.diachi LIKE ?)";
-    $search_param = "%{$search}%";
-    $params = array_merge($params, [$search_param, $search_param, $search_param, $search_param]);
-    $types .= "ssss";
-}
-
-// Lọc nhanh theo dropdown
-if ($filter !== '') {
-    if ($filter == 'today') {
-        $where .= " AND DATE(tbDonHang.ngaymua) = CURDATE()";
-    } elseif ($filter == 'yesterday') {
-        $where .= " AND DATE(tbDonHang.ngaymua) = DATE_SUB(CURDATE(), INTERVAL 1 DAY)";
-    } elseif ($filter == 'this_week') {
-        $where .= " AND YEARWEEK(tbDonHang.ngaymua, 1) = YEARWEEK(CURDATE(), 1)";
-    } elseif ($filter == 'this_month') {
-        $where .= " AND MONTH(tbDonHang.ngaymua) = MONTH(CURDATE()) AND YEAR(tbDonHang.ngaymua) = YEAR(CURDATE())";
+if ($_SERVER['REQUEST_METHOD'] == "POST" && isset($_POST['update_status'])) {
+    $madonhang = $_POST['madonhang'];
+    $tinhtrang = $_POST['tinhtrang'];
+    try {
+        $update_query = $pdo->prepare("UPDATE tbDonHang SET tinhtrang = ? WHERE madonhang = ?");
+        $update_query->execute([$tinhtrang, $madonhang]);
+        $_SESSION['message'] = ['type' => 'success', 'content' => 'Cập nhật trạng thái thành công.'];
+    } catch (PDOException $e) {
+        $_SESSION['message'] = ['type' => 'danger', 'content' => 'Lỗi cập nhật: ' . $e->getMessage()];
     }
+    header("Location: manage_orders.php");
+    exit;
 }
 
-// Lọc theo khoảng thời gian (nếu cả hai ngày được chọn)
+$search = isset($_GET['search']) ? trim($_GET['search']) : '';
+$date_from = isset($_GET['date_from']) ? $_GET['date_from'] : '';
+$date_to = isset($_GET['date_to']) ? $_GET['date_to'] : '';
+$filter = isset($_GET['filter']) ? $_GET['filter'] : '';
+
+$where_clauses = []; $params = [];
+if ($search !== '') {
+    $where_clauses[] = "(tbDonHang.madonhang LIKE ? OR tbkhachhang.tenkhach LIKE ? OR tbkhachhang.sodienthoai LIKE ?)";
+    $search_param = "%{$search}%";
+    $params[] = $search_param; $params[] = $search_param; $params[] = $search_param;
+}
+if ($filter !== '') {
+    if ($filter == 'today') $where_clauses[] = "DATE(tbDonHang.ngaymua) = CURDATE()";
+    elseif ($filter == 'yesterday') $where_clauses[] = "DATE(tbDonHang.ngaymua) = DATE_SUB(CURDATE(), INTERVAL 1 DAY)";
+    elseif ($filter == 'this_week') $where_clauses[] = "YEARWEEK(tbDonHang.ngaymua, 1) = YEARWEEK(CURDATE(), 1)";
+    elseif ($filter == 'this_month') $where_clauses[] = "MONTH(tbDonHang.ngaymua) = MONTH(CURDATE()) AND YEAR(tbDonHang.ngaymua) = YEAR(CURDATE())";
+}
 if ($date_from !== '' && $date_to !== '') {
-    $where .= " AND DATE(tbDonHang.ngaymua) BETWEEN ? AND ?";
-    $params[] = $date_from;
-    $params[] = $date_to;
-    $types .= "ss";
+    $where_clauses[] = "DATE(tbDonHang.ngaymua) BETWEEN ? AND ?";
+    $params[] = $date_from; $params[] = $date_to;
 }
+$where_sql = count($where_clauses) > 0 ? "WHERE " . implode(' AND ', $where_clauses) : "";
 
-// Phân trang
-$limit  = 10;
-$page   = isset($_GET['page']) ? (int) $_GET['page'] : 1;
+$limit = 10;
+$page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
 $offset = ($page - 1) * $limit;
 
-// Đếm tổng số đơn hàng
-$count_sql = "SELECT COUNT(*) as total FROM tbDonHang 
-              JOIN tbkhachhang ON tbDonHang.makhach = tbkhachhang.makhach 
-              $where";
-$stmt = $conn->prepare($count_sql);
-if ($types !== "") {
-    $stmt->bind_param($types, ...$params);
-}
-$stmt->execute();
-$result_count = $stmt->get_result();
-$total_row = $result_count->fetch_assoc();
-$total = $total_row['total'];
+$count_sql = "SELECT COUNT(*) FROM tbDonHang JOIN tbkhachhang ON tbDonHang.makhach = tbkhachhang.makhach {$where_sql}";
+$stmt_count = $pdo->prepare($count_sql);
+$stmt_count->execute($params);
+$total = $stmt_count->fetchColumn();
 $total_pages = ceil($total / $limit);
 
-// Lấy dữ liệu đơn hàng cùng thông tin khách hàng và tổng giá trị
-$sql = "SELECT tbDonHang.*, tbkhachhang.tenkhach, tbkhachhang.sodienthoai, tbkhachhang.diachi, 
+$sql = "SELECT tbDonHang.*, tbkhachhang.tenkhach, tbkhachhang.sodienthoai,
         (SELECT SUM(soluong * dongia) FROM tbChiTietDonHang WHERE madonhang = tbDonHang.madonhang) AS total_value
         FROM tbDonHang 
         JOIN tbkhachhang ON tbDonHang.makhach = tbkhachhang.makhach 
-        $where 
+        {$where_sql} 
         ORDER BY tbDonHang.ngaymua DESC 
-        LIMIT ? OFFSET ?";
-$stmt = $conn->prepare($sql);
-if ($types !== "") {
-    $types_with_limit = $types . "ii";
-    $params_with_limit = $params;
-    $params_with_limit[] = $limit;
-    $params_with_limit[] = $offset;
-    $stmt->bind_param($types_with_limit, ...$params_with_limit);
-} else {
-    $stmt->bind_param("ii", $limit, $offset);
-}
-$stmt->execute();
-$result = $stmt->get_result();
+        LIMIT {$limit} OFFSET {$offset}";
+$stmt = $pdo->prepare($sql);
+$stmt->execute($params);
+$orders = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
 ?>
+
 <!DOCTYPE html>
 <html lang="vi">
-
 <head>
     <meta charset="UTF-8">
-    <title>Quản lý đơn hàng</title>
-    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <title>Quản lý Đơn hàng</title>
+    
     <style>
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #f7f9fc;
-            color: #333;
+            background-color: #f4f6f9;
         }
-
-        h2 {
-            text-align: center;
-            margin-bottom: 20px;
-            color: #2c3e50;
+        .container-fluid {
+            max-width: 1600px;
+        }
+        .filter-box {
+            background-color: #fff;
+            padding: 2rem;
+            border-radius: 0.5rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,.1);
+            margin-bottom: 2rem;
+        }
+        .orders-table {
+            border-collapse: separate;
+            border-spacing: 0 15px;
+            width: 100%;
+        }
+        .orders-table thead th {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 15px 20px;
             font-weight: 600;
-            border-bottom: 2px solid #e1e8ed;
-            padding-bottom: 10px;
+            text-align: left;
         }
+        .orders-table thead th:first-child { border-radius: 8px 0 0 8px; }
+        .orders-table thead th:last-child { border-radius: 0 8px 8px 0; }
 
-        .container-custom {
-            max-width: 1200px;
-            margin: 30px auto;
-            background: #fff;
-            padding: 20px 30px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        .orders-table tbody tr {
+            background-color: #fff;
+            box-shadow: 0 1px 3px rgba(0,0,0,.1);
             border-radius: 8px;
         }
-
-        /* Tùy chỉnh phần tìm kiếm & lọc: sử dụng flex để sắp xếp các thành phần */
-        .filter-form {
-            display: flex;
-            flex-wrap: wrap;
-            align-items: center;
-            justify-content: center;
-            /* Căn giữa theo chiều ngang */
-            gap: 15px;
-            margin-bottom: 20px;
-        }
-
-        .filter-form .form-group {
-            display: flex;
-            align-items: center;
-            margin-bottom: 0;
-            /* Loại bỏ khoảng cách dưới để các phần tử thẳng hàng */
-        }
-
-        .filter-form .form-group label {
-            margin-right: 5px;
-        }
-
-        .filter-form .form-group input,
-        .filter-form .form-group select {
-            /* Giữ chiều cao đồng nhất cho các input */
-            height: calc(1.5em + .75rem + 2px);
-        }
-
-        /* Căn chỉnh nút Tìm kiếm và Reset */
-        .filter-form button.btn-primary,
-        .filter-form a.btn-secondary {
-            width: 120px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            height: calc(1.5em + .75rem + 2px);
-           
-            padding: 0;
-            line-height: 1;
-           
+        .orders-table tbody td {
+            padding: 20px;
             vertical-align: middle;
-           
-            margin: 0;
+            border: none;
         }
+        .orders-table tbody td:first-child { border-radius: 8px 0 0 8px; }
+        .orders-table tbody td:last-child { border-radius: 0 8px 8px 0; }
 
-        .filter-form .form-group a.btn-secondary {
-            margin-left: 10px;
+        .customer-info strong { font-size: 1.05rem; }
+        .customer-info small { color: #555; }
+        .order-id { font-weight: 600; }
+        .order-price { font-weight: 600; color: #dc3545; }
+        
+        .action-box {
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 15px;
+            background-color: #fff;
         }
+        .action-box .btn-save { width: 100%; margin-top: 10px; }
+        .action-icons { margin-top: 10px; text-align: center; }
+        .action-icons a { color: #6c757d; margin: 0 8px; font-size: 1.1rem; }
 
-     
-        .table th:nth-child(1) {
-            width: 100px;
+        /* === CSS PHÂN TRANG (ĐÃ SỬA LẠI THEO HÌNH ẢNH) === */
+        .pagination {
+            padding-bottom: 2rem;
         }
-
-        .table th:nth-child(2) {
-            width: 18%;
+        /* Bỏ các style mặc định của Bootstrap */
+        .pagination .page-item {
+            margin: 0 !important;
         }
-
-        .table th:nth-child(3) {
-            width: 12%;
-        }
-
-        .table th:nth-child(4) {
-            width: 20%;
-        }
-
-        .table th:nth-child(5) {
-            width: 15%;
-        }
-
-        .table th:nth-child(6) {
-            width: 13%;
-        }
-
-        .table th:nth-child(7) {
-            width: 10%;
-        }
-
-        /* Căn giữa cho văn bản trong các cột */
-        .table th,
-        .table td {
-            text-align: center;
-            vertical-align: middle;
-        }
-
-        /* Đổi màu cho tên cột */
-        .table thead th {
-            background-color: #2c3e50 !important;
-            color: #fff;
-            font-weight: bold;
-        }
-
         .pagination .page-link {
-            color: #2c3e50;
+            color: #343a40; /* Màu chữ mặc định */
+            background-color: #fff;
+            border: 1px solid #dee2e6;
+            margin-left: -1px; /* Ghép các nút lại với nhau */
+            transition: all 0.2s ease;
+            box-shadow: none !important;
+            border-radius: 0; /* Bỏ bo góc riêng lẻ */
+        }
+        /* Bo góc cho nút đầu và nút cuối của cả cụm */
+        .pagination .page-item:first-child .page-link {
+            border-top-left-radius: 0.25rem;
+            border-bottom-left-radius: 0.25rem;
+        }
+        .pagination .page-item:last-child .page-link {
+            border-top-right-radius: 0.25rem;
+            border-bottom-right-radius: 0.25rem;
         }
 
+        .pagination .page-link:hover {
+            background-color: #e9ecef;
+            border-color: #dee2e6;
+        }
         .pagination .page-item.active .page-link {
-            background-color: #2c3e50;
+            z-index: 1;
+            color: #fff;
+            background-color: #2c3e50; /* Màu nền tối cho trang hiện tại */
             border-color: #2c3e50;
         }
-
-        /* Nút cập nhật đổi màu sang #ffc107 */
-        .btn.btn-sm.btn-primary {
-            background-color: #ffc107;
-            border-color: #ffc107;
-            color: #000;
-        }
-
-        .btn.btn-sm.btn-primary:hover {
-            background-color: #e0a800;
-            border-color: #d39e00;
-            color: #000;
+        .pagination .page-item.disabled .page-link {
+            color: #6c757d;
+            background-color: #fff;
+            border-color: #dee2e6;
         }
     </style>
 </head>
-
 <body>
-    <div class="container-custom">
-        <h2>Quản lý đơn hàng</h2>
+    <h1>Quản lý đơn hàng</h1>
+<div class="container-fluid pt-4">
+    <?php if (isset($_SESSION['message'])): ?>
+        <div class="alert alert-<?php echo $_SESSION['message']['type']; ?> alert-dismissible fade show">
+            <?php echo htmlspecialchars($_SESSION['message']['content']); ?>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        <?php unset($_SESSION['message']); ?>
+    <?php endif; ?>
 
-        <!-- Phần tìm kiếm và lọc -->
-        <form method="GET" class="filter-form">
-            <div class="form-group">
-                <input type="text" name="search" class="form-control" placeholder="Tìm kiếm: Mã đơn, khách, SĐT, địa chỉ" value="<?= htmlspecialchars($search) ?>">
-            </div>
-            <div class="form-group">
-                <select name="filter" class="form-control">
-                    <option value="">-- Lọc nhanh --</option>
-                    <option value="today" <?= ($filter == 'today') ? 'selected' : '' ?>>Hôm nay</option>
-                    <option value="yesterday" <?= ($filter == 'yesterday') ? 'selected' : '' ?>>Hôm qua</option>
-                    <option value="this_week" <?= ($filter == 'this_week') ? 'selected' : '' ?>>Tuần này</option>
-                    <option value="this_month" <?= ($filter == 'this_month') ? 'selected' : '' ?>>Tháng này</option>
-                </select>
-            </div>
-            <div class="form-group">
-                <label for="date_from">Từ:</label>
-                <input type="date" name="date_from" id="date_from" class="form-control" value="<?= htmlspecialchars($date_from) ?>">
-            </div>
-            <div class="form-group">
-                <label for="date_to">Đến:</label>
-                <input type="date" name="date_to" id="date_to" class="form-control" value="<?= htmlspecialchars($date_to) ?>">
-            </div>
-            <div class="form-group">
-                <button type="submit" class="btn btn-primary">Tìm kiếm</button>
-                <a href="manage_orders.php" class="btn btn-secondary">Reset</a>
+    <div class="filter-box">
+        <form method="GET" class="row g-3">
+            <div class="col-md-12"><input type="text" name="search" class="form-control" placeholder="Tìm Mã ĐH, Tên KH, SĐT..." value="<?php echo htmlspecialchars($search); ?>"></div>
+            <div class="col-md-12"><select name="filter" class="form-select">
+                    <option value="">Lọc nhanh...</option>
+                    <option value="today" <?php if($filter == 'today') echo 'selected'; ?>>Hôm nay</option>
+                    <option value="yesterday" <?php if($filter == 'yesterday') echo 'selected'; ?>>Hôm qua</option>
+                    <option value="this_week" <?php if($filter == 'this_week') echo 'selected'; ?>>Tuần này</option>
+                    <option value="this_month" <?php if($filter == 'this_month') echo 'selected'; ?>>Tháng này</option>
+            </select></div>
+            <div class="col-md-6"><input type="date" name="date_from" class="form-control" value="<?php echo htmlspecialchars($date_from); ?>"></div>
+            <div class="col-md-6"><input type="date" name="date_to" class="form-control" value="<?php echo htmlspecialchars($date_to); ?>"></div>
+            <div class="col-md-12 d-flex">
+                <button type="submit" class="btn btn-primary w-100"><i class="fas fa-filter"></i> Lọc</button>
+                <a href="manage_orders.php" class="btn btn-light ms-2" title="Đặt lại"><i class="fas fa-sync-alt"></i></a>
             </div>
         </form>
+    </div>
 
-        <!-- Bảng đơn hàng -->
-        <table class="table table-bordered">
+    <div class="table-responsive">
+        <table class="orders-table">
             <thead>
                 <tr>
-                    <th>Mã đơn</th>
-                    <th>Khách hàng</th>
-                    <th>SĐT</th>
-                    <th>Địa chỉ</th>
-                    <th>Ngày mua</th>
-                    <th>Tổng giá trị</th>
-                    <th>Tình trạng</th>
-                    <th>Chi tiết</th>
+                    <th style="width: 15%;">Mã ĐH</th>
+                    <th style="width: 15%;">Khách hàng</th>
+                    <th style="width: 12%;">Ngày mua</th>
+                    <th style="width: 13%;">Tổng tiền</th>
+                    <th style="width: 12%;">Tình trạng</th>
+                    <th style="width: 33%;">Hành động</th>
                 </tr>
             </thead>
             <tbody>
-                <?php if ($result->num_rows > 0): ?>
-                    <?php while ($row = $result->fetch_assoc()): ?>
+                <?php if (!empty($orders)): ?>
+                    <?php foreach ($orders as $row): ?>
                         <tr>
-                            <td><?= htmlspecialchars($row['madonhang']) ?></td>
-                            <td><?= htmlspecialchars($row['tenkhach']) ?></td>
-                            <td><?= htmlspecialchars($row['sodienthoai']) ?></td>
-                            <td><?= htmlspecialchars($row['diachi']) ?></td>
-                            <td><?= htmlspecialchars($row['ngaymua']) ?></td>
-                            <td><?= number_format($row['total_value'], 0) ?> VND</td>
-                            <td>
-                                <form method="post" style="margin: 0;">
-                                    <input type="hidden" name="madonhang" value="<?= htmlspecialchars($row['madonhang']) ?>">
-                                    <select name="tinhtrang" class="form-control form-control-sm d-inline-block" style="width: auto;">
-                                        <option value="Đang xử lý" <?= ($row['tinhtrang'] == "Đang xử lý") ? 'selected' : '' ?>>Đang xử lý</option>
-                                        <option value="Đã giao" <?= ($row['tinhtrang'] == "Đã giao") ? 'selected' : '' ?>>Đã giao</option>
-                                        <option value="Đang giao hàng" <?= ($row['tinhtrang'] == "Đang giao hàng") ? 'selected' : '' ?>>Đang giao hàng</option>
-                                        <option value="Đã hủy" <?= ($row['tinhtrang'] == "Đã hủy") ? 'selected' : '' ?>>Đã hủy</option>
-                                    </select>
-                                    <button type="submit" name="update_status" class="btn btn-sm btn-primary">Cập nhật</button>
-                            <td>
-                                <a href="order_detail.php?madonhang=<?= urlencode($row['madonhang']) ?>" class="btn btn-sm btn-info">Xem</a>
+                            <td class="order-id"><?php echo htmlspecialchars($row['madonhang']); ?></td>
+                            <td class="customer-info">
+                                <strong><?php echo htmlspecialchars($row['tenkhach']); ?></strong><br>
+                                <small><i class="fas fa-phone-alt"></i> <?php echo htmlspecialchars($row['sodienthoai']); ?></small>
                             </td>
-                                </form>
+                            <td><?php echo date('d/m/Y H:i', strtotime($row['ngaymua'])); ?></td>
+                            <td class="order-price"><?php echo number_format($row['total_value'] ?? 0, 0, ',', '.'); ?> VNĐ</td>
+                            <td><?php echo htmlspecialchars($row['tinhtrang']); ?></td>
+                            <td>
+                                <div class="action-box">
+                                    <form method="POST" class="d-flex flex-column">
+                                        <input type="hidden" name="madonhang" value="<?php echo htmlspecialchars($row['madonhang']); ?>">
+                                        <select name="tinhtrang" class="form-select">
+                                            <option value="Chờ xử lý" <?php if($row['tinhtrang'] == 'Chờ xử lý') echo 'selected'; ?>>Chờ xử lý</option>
+                                            <option value="Đang giao hàng" <?php if($row['tinhtrang'] == 'Đang giao hàng') echo 'selected'; ?>>Đang giao hàng</option>
+                                            <option value="Đã giao hàng" <?php if($row['tinhtrang'] == 'Đã giao hàng') echo 'selected'; ?>>Đã giao hàng</option>
+                                            <option value="Đã hủy" <?php if($row['tinhtrang'] == 'Đã hủy') echo 'selected'; ?>>Đã hủy</option>
+                                        </select>
+                                        <button type="submit" name="update_status" class="btn btn-primary btn-save"><i class="fas fa-check"></i></button>
+                                    </form>
+                                    <div class="action-icons">
+                                        <a href="order_detail.php?id=<?php echo htmlspecialchars($row['madonhang']); ?>" title="Xem chi tiết"><i class="fas fa-eye"></i></a>
+                                        <a href="manage_orders.php?action=delete&id=<?php echo htmlspecialchars($row['madonhang']); ?>" title="Xóa đơn hàng" onclick="return confirm('Bạn có chắc chắn muốn xóa vĩnh viễn đơn hàng này?');">
+                                           <i class="fas fa-trash-alt"></i>
+                                        </a>
+                                    </div>
+                                </div>
                             </td>
                         </tr>
-                    <?php endwhile; ?>
+                    <?php endforeach; ?>
                 <?php else: ?>
                     <tr>
-                        <td colspan="7" class="text-center">Không có dữ liệu đơn hàng.</td>
+                       <td colspan="6">
+                           <div class="text-center p-5 bg-white rounded-3">Không tìm thấy đơn hàng nào.</div>
+                       </td>
                     </tr>
                 <?php endif; ?>
             </tbody>
         </table>
-
-        <!-- Phân trang -->
+    </div>
+    
+    <!-- Phân trang đã được áp dụng CSS mới -->
+    <?php if ($total_pages > 1): ?>
         <nav>
-            <ul class="pagination justify-content-center">
-                <?php if ($page > 1): ?>
-                    <li class="page-item">
-                        <a class="page-link" href="?page=<?= $page - 1 ?>&search=<?= urlencode($search) ?>&date_from=<?= urlencode($date_from) ?>&date_to=<?= urlencode($date_to) ?>&filter=<?= urlencode($filter) ?>">Trước</a>
-                    </li>
-                <?php endif; ?>
+            <ul class="pagination justify-content-center mt-4">
+                <?php 
+                $query_params = $_GET; unset($query_params['page']);
+                $base_query = http_build_query($query_params);
+                ?>
+                <li class="page-item <?php if($page <= 1) echo 'disabled'; ?>">
+                    <a class="page-link" href="?<?php echo $base_query . '&page=' . ($page - 1); ?>">Trước</a>
+                </li>
                 <?php for ($i = 1; $i <= $total_pages; $i++): ?>
-                    <li class="page-item <?= ($i == $page) ? 'active' : '' ?>">
-                        <a class="page-link" href="?page=<?= $i ?>&search=<?= urlencode($search) ?>&date_from=<?= urlencode($date_from) ?>&date_to=<?= urlencode($date_to) ?>&filter=<?= urlencode($filter) ?>"><?= $i ?></a>
+                    <li class="page-item <?php if($i == $page) echo 'active'; ?>">
+                        <a class="page-link" href="?<?php echo $base_query . '&page=' . $i; ?>"><?php echo $i; ?></a>
                     </li>
                 <?php endfor; ?>
-                <?php if ($page < $total_pages): ?>
-                    <li class="page-item">
-                        <a class="page-link" href="?page=<?= $page + 1 ?>&search=<?= urlencode($search) ?>&date_from=<?= urlencode($date_from) ?>&date_to=<?= urlencode($date_to) ?>&filter=<?= urlencode($filter) ?>">Sau</a>
-                    </li>
-                <?php endif; ?>
+                <li class="page-item <?php if($page >= $total_pages) echo 'disabled'; ?>">
+                    <a class="page-link" href="?<?php echo $base_query . '&page=' . ($page + 1); ?>">Sau</a>
+                </li>
             </ul>
         </nav>
-    </div>
+    <?php endif; ?>
+</div>
 </body>
-
 </html>

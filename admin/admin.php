@@ -1,8 +1,8 @@
 <?php 
 session_start();
-include '../includes/db.php';
-include '../templates/adminheader.php';
-// Đảm bảo file logic được include sau khi db được include
+// Chuyển sang require __DIR__ để đồng bộ hóa đường dẫn
+require __DIR__ . '/../includes/db.php';
+require __DIR__ . '/../templates/adminheader.php';
 include 'bao_cao.php';
 
 // Kiểm tra nếu chưa đăng nhập hoặc không phải admin thì chuyển hướng
@@ -11,31 +11,33 @@ if (!isset($_SESSION['username']) || $_SESSION['role'] !== 'Admin') {
     exit;
 }
 
-// Truy vấn tổng số đơn hàng
-$sql_orders = "SELECT COUNT(*) as total_orders FROM tbdonhang";
-$result_orders = $conn->query($sql_orders);
-$row_orders = $result_orders->fetch_assoc();
-$total_orders = $row_orders['total_orders'];
+// Kiểm tra kết nối PDO
+if (!isset($pdo)) {
+    die("Lỗi: Không thể kết nối CSDL (PDO). Vui lòng kiểm tra file includes/db.php.");
+}
 
-// Truy vấn tổng số khách hàng đã đăng ký tài khoản
-$sql_customers = "SELECT COUNT(*) as total_customers FROM tbkhachhang";
-$result_customers = $conn->query($sql_customers);
-$row_customers = $result_customers->fetch_assoc();
-$total_customers = $row_customers['total_customers'];
+// Truy vấn tổng số đơn hàng (PDO)
+$sql_orders = "SELECT COUNT(*) FROM tbdonhang";
+$total_orders = $pdo->query($sql_orders)->fetchColumn();
 
-// Truy vấn tổng doanh thu từ những đơn hàng có trạng thái 'Đã giao'
-$sql_revenue = "SELECT SUM(ct.soluong * ct.dongia) as total_revenue 
+// Truy vấn tổng số khách hàng đã đăng ký tài khoản (PDO)
+$sql_customers = "SELECT COUNT(*) FROM tbkhachhang";
+$total_customers = $pdo->query($sql_customers)->fetchColumn();
+
+// Truy vấn tổng doanh thu từ những đơn hàng có trạng thái 'Đã giao' (PDO)
+$sql_revenue = "SELECT SUM(ct.soluong * ct.dongia) 
                  FROM tbdonhang AS dh 
                  INNER JOIN tbchitietdonhang AS ct ON dh.madonhang = ct.madonhang 
                  WHERE dh.tinhtrang = 'Đã giao'";
-$result_revenue = $conn->query($sql_revenue);
-$row_revenue = $result_revenue->fetch_assoc();
-$total_revenue = $row_revenue['total_revenue'];
+$total_revenue = $pdo->query($sql_revenue)->fetchColumn();
+
 if (!$total_revenue) {
     $total_revenue = 0;
 }
-$status_data = getOrderStatusStats($conn);
-$revenue_data = getWeeklyRevenue($conn);
+
+// Cập nhật hàm gọi, truyền $pdo thay vì $conn
+$status_data = getOrderStatusStats($pdo);
+$revenue_data = getWeeklyRevenue($pdo);
 
 // Chuyển đổi dữ liệu PHP sang định dạng JSON để JS có thể sử dụng
 $status_json = json_encode($status_data);
@@ -53,7 +55,7 @@ $revenue_labels_json = json_encode(array_keys($revenue_data)); // Lấy nhãn ng
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
 </head>
 
-<!-- CSS tùy chỉnh -->
+<!-- CSS tùy chỉnh (Giữ nguyên) -->
 <style>
     h2{
         margin-bottom: 20px;

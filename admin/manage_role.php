@@ -1,6 +1,8 @@
 <?php
 session_start();
+// Chú ý: File db.php phải cung cấp biến $pdo (PDO instance)
 include '../includes/db.php';
+include '../templates/adminheader.php';
 
 // Kiểm tra nếu chưa đăng nhập hoặc không phải Admin thì chuyển hướng
 if (!isset($_SESSION['username']) || $_SESSION['role'] !== 'Admin') {
@@ -8,42 +10,60 @@ if (!isset($_SESSION['username']) || $_SESSION['role'] !== 'Admin') {
     exit;
 }
 
-include '../templates/adminheader.php';
+// Xử lý cập nhật quyền nếu có yêu cầu (Sử dụng PDO Prepared Statements)
+if (isset($_POST['update_role'])) {
+    $username = trim($_POST['username']);
+    $new_role = trim($_POST['role']);
+
+    try {
+        // Cập nhật quyền trong bảng tbuserinrole
+        $role_query = $pdo->prepare("UPDATE tbuserinrole SET role = :role WHERE username = :username");
+        $role_query->execute([
+            ':role' => $new_role,
+            ':username' => $username
+        ]);
+        
+        $_SESSION['message'] = ['type' => 'success', 'content' => "Cập nhật quyền **$new_role** cho tài khoản **$username** thành công."];
+    } catch (PDOException $e) {
+        $_SESSION['message'] = ['type' => 'danger', 'content' => "Lỗi cập nhật quyền: " . $e->getMessage()];
+    }
+
+    header("Location: manage_role.php");
+    exit;
+}
 
 // Thiết lập phân trang
 $limit = 10;
 $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
 $offset = ($page - 1) * $limit;
 
-// Truy vấn tổng số tài khoản
+// 1. Truy vấn tổng số tài khoản (Sử dụng PDO)
 $count_sql = "SELECT COUNT(*) as total 
               FROM tbUser u 
               JOIN tbuserinrole ur ON u.username = ur.username";
-$count_result = $conn->query($count_sql);
-$total_row = $count_result->fetch_assoc();
-$total_users = $total_row['total'];
+try {
+    $stmt_count = $pdo->query($count_sql);
+    $total_users = $stmt_count->fetch(PDO::FETCH_ASSOC)['total'];
+} catch (PDOException $e) {
+    die("Lỗi truy vấn tổng số người dùng: " . $e->getMessage());
+}
 $total_pages = ceil($total_users / $limit);
 
-// Truy vấn lấy thông tin người dùng, quyền và tên khách (nếu có) từ bảng tbkhachhang có phân trang
+// 2. Truy vấn lấy thông tin người dùng, quyền và tên khách (nếu có) có phân trang (Sử dụng PDO)
 $sql = "SELECT u.username, ur.role AS role_name, kh.tenkhach 
         FROM tbUser u 
         JOIN tbuserinrole ur ON u.username = ur.username 
         LEFT JOIN tbkhachhang kh ON u.username = kh.username
-        LIMIT $limit OFFSET $offset";
-$result = $conn->query($sql);
+        LIMIT :limit OFFSET :offset";
 
-// Xử lý cập nhật quyền nếu có yêu cầu
-if (isset($_POST['update_role'])) {
-    $username = $_POST['username'];
-    $new_role = $_POST['role'];
-
-    // Cập nhật quyền trong bảng tbuserinrole
-    $role_query = $conn->prepare("UPDATE tbuserinrole SET role = ? WHERE username = ?");
-    $role_query->bind_param("ss", $new_role, $username);
-    $role_query->execute();
-
-    header("Location: manage_role.php");
-    exit;
+try {
+    $stmt = $pdo->prepare($sql);
+    $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+    $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+    $stmt->execute();
+    $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
+} catch (PDOException $e) {
+    die("Lỗi truy vấn danh sách người dùng: " . $e->getMessage());
 }
 ?>
 
@@ -54,6 +74,7 @@ if (isset($_POST['update_role'])) {
     <meta charset="UTF-8">
     <title>Quản lý tài khoản</title>
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <style>
         /* Container chung */
         .container-custom {
@@ -73,42 +94,22 @@ if (isset($_POST['update_role'])) {
             padding-bottom: 10px;
         }
 
-
         /* Bảng dữ liệu */
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-bottom: 20px;
-
-        }
-
-        table thead {
+        .table thead th {
             background-color: #2c3e50 !important;
             color: #fff;
         }
 
-        table thead th {
-            background-color: #2c3e50 !important;
-            color: #fff !important;
-        }
-
-        table th,
-        table td {
-            padding: 12px 15px;
+        .table th, .table td {
             text-align: center;
-            border: 1px solid #dee2e6;
+            vertical-align: middle;
         }
-
-        table tbody tr:nth-child(even) {
-            background-color: #f7f9fc;
-        }
-
-        table tbody tr:hover {
-            background-color: #eef1f5;
-        }
-
+        
         /* Form trong bảng */
         form.inline-form {
+            display: flex;
+            justify-content: center;
+            align-items: center;
             margin: 0;
         }
 
@@ -117,6 +118,7 @@ if (isset($_POST['update_role'])) {
             border: 1px solid #ced4da;
             border-radius: 4px;
             margin-right: 5px;
+            min-width: 100px;
         }
 
         form.inline-form button {
@@ -126,6 +128,7 @@ if (isset($_POST['update_role'])) {
             background-color: #ffc107;
             color: black;
             transition: background-color 0.3s ease;
+            font-size: 0.9rem;
         }
 
         form.inline-form button:hover {
@@ -144,52 +147,64 @@ if (isset($_POST['update_role'])) {
 
         .pagination .page-link {
             color: #2c3e50;
-            border-radius: 5px;
-        }
-
-        /* Responsive */
-        @media (max-width: 768px) {
-
-            table th,
-            table td {
-                padding: 8px 10px;
-            }
         }
     </style>
 </head>
 
 <body>
     <div class="container-custom">
-        <h2>Quản lý tài khoản</h2>
-        <table>
-            <thead>
-                <tr>
-                    <th>Username</th>
-                    <th>Tên</th>
-                    <th>Quyền</th>
-                    <th>Thay đổi</th>
-                </tr>
-            </thead>
-            <tbody>
-                <?php while ($row = $result->fetch_assoc()) : ?>
+        <h2>Quản lý tài khoản và Phân quyền</h2>
+        
+        <!-- Hiển thị thông báo (nếu có) -->
+        <?php if (isset($_SESSION['message'])): ?>
+            <div class="alert alert-<?= $_SESSION['message']['type'] ?> alert-dismissible fade show" role="alert">
+                <?= htmlspecialchars($_SESSION['message']['content']) ?>
+                <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <?php unset($_SESSION['message']); ?>
+        <?php endif; ?>
+
+        <div class="table-responsive">
+            <table class="table table-bordered table-hover">
+                <thead>
                     <tr>
-                        <td><?= htmlspecialchars($row['username']) ?></td>
-                        <td><?= htmlspecialchars($row['tenkhach'] ?? 'Chưa cập nhật') ?></td>
-                        <td><?= htmlspecialchars($row['role_name']) ?></td>
-                        <td>
-                            <form method="post" class="inline-form">
-                                <input type="hidden" name="username" value="<?= htmlspecialchars($row['username']) ?>">
-                                <select name="role">
-                                    <option value="Member" <?= ($row['role_name'] == 'Member') ? 'selected' : '' ?>>Member</option>
-                                    <option value="Admin" <?= ($row['role_name'] == 'Admin') ? 'selected' : '' ?>>Admin</option>
-                                </select>
-                                <button type="submit" name="update_role">Cập nhật</button>
-                            </form>
-                        </td>
+                        <th>Username</th>
+                        <th>Tên Khách hàng</th>
+                        <th>Quyền hiện tại</th>
+                        <th>Cập nhật Quyền</th>
                     </tr>
-                <?php endwhile; ?>
-            </tbody>
-        </table>
+                </thead>
+                <tbody>
+                    <?php if (!empty($users)): ?>
+                        <?php foreach ($users as $row) : ?>
+                            <tr>
+                                <td><?= htmlspecialchars($row['username']) ?></td>
+                                <td><?= htmlspecialchars($row['tenkhach'] ?? 'Chưa cập nhật') ?></td>
+                                <td><?= htmlspecialchars($row['role_name']) ?></td>
+                                <td>
+                                    <form method="post" class="inline-form">
+                                        <input type="hidden" name="username" value="<?= htmlspecialchars($row['username']) ?>">
+                                        <select name="role" class="form-control-sm">
+                                            <option value="Member" <?= ($row['role_name'] == 'Member') ? 'selected' : '' ?>>Member</option>
+                                            <option value="Admin" <?= ($row['role_name'] == 'Admin') ? 'selected' : '' ?>>Admin</option>
+                                        </select>
+                                        <button type="submit" name="update_role" class="btn btn-warning btn-sm">
+                                            <i class="fas fa-redo-alt"></i> Sửa
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                    <?php else: ?>
+                        <tr>
+                            <td colspan="4" class="text-center">Không có tài khoản nào được tìm thấy.</td>
+                        </tr>
+                    <?php endif; ?>
+                </tbody>
+            </table>
+        </div>
 
         <!-- Phân trang -->
         <nav>
@@ -214,6 +229,10 @@ if (isset($_POST['update_role'])) {
             </ul>
         </nav>
     </div>
+    <!-- Scripts for Bootstrap features -->
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.4/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
 </body>
 
 </html>
