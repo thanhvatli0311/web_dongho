@@ -1,26 +1,39 @@
 <?php
 ob_start();
 session_start();
+// Đảm bảo file này khởi tạo biến $pdo
 include '../includes/db.php';
 
+// Kiểm tra đăng nhập
 if (!isset($_SESSION['username'])) {
     $_SESSION['redirect_url'] = $_SERVER['REQUEST_URI'];
     header("Location: login.php");
     exit;
 }
 
+// Kiểm tra $pdo
+if (!isset($pdo)) {
+    die("Lỗi: Biến \$pdo (kết nối CSDL) không được định nghĩa. Vui lòng kiểm tra file db.php.");
+}
+
 $username = $_SESSION['username'];
 
-$customer_sql = "SELECT * FROM tbkhachhang WHERE username = ?";
-$stmt_customer = $pdo->prepare($customer_sql);
-$stmt_customer->execute([$username]);
-$customer = $stmt_customer->fetch();
+try {
+    // Lấy thông tin khách hàng
+    $customer_sql = "SELECT * FROM tbkhachhang WHERE username = ?";
+    $stmt_customer = $pdo->prepare($customer_sql);
+    $stmt_customer->execute([$username]);
+    $customer = $stmt_customer->fetch();
 
-if (!$customer) {
-    echo "<div class='flash-message error'>Khách hàng không tồn tại!</div>";
-    exit;
+    if (!$customer) {
+        echo "<div class='flash-message error'>Khách hàng không tồn tại!</div>";
+        exit;
+    }
+    $makhach = $customer['makhach'];
+} catch (\PDOException $e) {
+    die("Lỗi CSDL: " . $e->getMessage());
 }
-$makhach = $customer['makhach'];
+
 
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['action'])) {
     try {
@@ -46,7 +59,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['action'])) {
             $diachi = trim($_POST['diachi']);
             
             if (empty($tenkhach) || empty($sodienthoai)) {
-                 throw new Exception("Tên và Số điện thoại không được để trống!");
+                throw new Exception("Tên và Số điện thoại không được để trống!");
             }
 
             $sql_update = "UPDATE tbkhachhang SET tenkhach=?, ngaysinh=?, gioitinh=?, sodienthoai=?, diachi=? WHERE username=?";
@@ -100,7 +113,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['action'])) {
 $tab = $_GET['tab'] ?? 'info';
 $subtab = $_GET['subtab'] ?? 'profile';
 
-include '../templates/header.php';
+include '../templates/header.php'; // Chú ý: File này phải chứa thẻ mở <body>
 ?>
 <!DOCTYPE html>
 <html lang="vi">
@@ -113,11 +126,10 @@ include '../templates/header.php';
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     
-    <!-- === CSS THEO PHONG CÁCH TỐI GIẢN === -->
     <style>
         /* 1. Thiết lập biến và Global Reset */
         :root {
-            --color-primary: #007bff; /* Xanh dương làm màu nhấn */
+            --color-primary: #007bff;
             --color-primary-hover: #0056b3;
             --color-danger: #dc3545;
             --color-danger-hover: #c82333;
@@ -129,6 +141,7 @@ include '../templates/header.php';
             --bg-white: #ffffff;
             --border-color: #dee2e6;
             --font-family-sans-serif: 'Inter', sans-serif;
+            --sidebar-width: 260px; /* Định nghĩa biến cho chiều rộng */
         }
 
         * {
@@ -142,33 +155,49 @@ include '../templates/header.php';
             background-color: var(--bg-light);
             color: var(--text-dark);
             line-height: 1.6;
+            /* Đặt padding cho body để chừa chỗ cho sidebar cố định */
+            padding-left: var(--sidebar-width); 
+            min-height: 100vh;
         }
 
         /* 2. Layout chính */
-        .account-container {
-            display: flex;
+        .page-wrapper {
             max-width: 1200px;
             margin: 3rem auto;
+        }
+
+        /* KHÔNG DÙNG account-container NỮA VÌ DÙNG PADDING CHO BODY */
+        .account-container {
             background: var(--bg-white);
             border: 1px solid var(--border-color);
             border-radius: 8px;
             overflow: hidden;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+            /* Bỏ flex và margin vì đã xử lý ở body */
         }
 
         .sidebar {
-            width: 260px;
+            /* === ĐÂY LÀ PHẦN CỐ ĐỊNH MENU === */
+            position: fixed;
+            top: 0; 
+            left: 0; 
+            height: 100vh; /* Chiều cao bằng 100% màn hình */
+            overflow-y: auto; /* Cho phép cuộn nếu menu quá dài */
+            z-index: 100;
+            /* === Hết phần cố định === */
+            
+            width: var(--sidebar-width);
             background: var(--bg-white);
             border-right: 1px solid var(--border-color);
             padding: 1.5rem 0;
         }
 
         .main-content {
-            flex: 1;
+            /* Main content không cần margin-left nữa vì body đã có padding-left */
             padding: 2.5rem;
         }
-
-        /* 3. Sidebar Navigation */
+        
+        /* 3. Sidebar Navigation (Giữ nguyên) */
         .sidebar-nav { list-style: none; }
         .sidebar-nav-item > a {
             display: flex;
@@ -193,7 +222,7 @@ include '../templates/header.php';
 
         .submenu {
             list-style: none;
-            padding-left: 2rem; /* Thụt vào so với menu cha */
+            padding-left: 2rem;
             margin: 0.5rem 0;
         }
         .submenu-item a {
@@ -211,7 +240,7 @@ include '../templates/header.php';
             font-weight: 500;
         }
 
-        /* 4. Main Content Elements */
+        /* 4. Main Content Elements (Giữ nguyên) */
         .main-content h2 {
             font-size: 1.75rem;
             font-weight: 600;
@@ -260,12 +289,14 @@ include '../templates/header.php';
             gap: 8px;
             transition: background-color 0.2s;
         }
-        .btn-primary { background-color: var(--color-primary); color: #fff; }
-        .btn-primary:hover { background-color: var(--color-primary-hover); }
+        .btn-primary { background-color: #F39C12; color: #fff; } /* Đổi màu nút chính */
+        .btn-primary:hover { background-color: #E67E22; }
         .btn-danger { background-color: var(--color-danger); color: #fff; }
         .btn-danger:hover { background-color: var(--color-danger-hover); }
         .btn-secondary { background-color: #6c757d; color: #fff; }
         .btn-secondary:hover { background-color: #5a6268; }
+        .btn-review { background-color: var(--color-success); color: #fff; padding: 0.5rem 1rem; font-size: 0.9em; }
+        .btn-review:hover { background-color: #1e7e34; }
 
         /* 5. Orders List */
         .order-card {
@@ -285,7 +316,7 @@ include '../templates/header.php';
         .order-header { margin-bottom: 1rem; padding-bottom: 1rem; border-bottom: 1px solid #f0f0f0; }
         .order-id { font-weight: 600; color: var(--text-dark); }
         .order-date { color: var(--text-light); font-size: 0.9em; }
-        .order-total { font-size: 1.1em; font-weight: 600; }
+        .order-total { font-size: 1.1em; font-weight: 600; color: #dc3545; } /* Thêm màu đỏ cho tổng tiền */
         .order-status { font-weight: 500; padding: 4px 10px; border-radius: 20px; font-size: 0.8em; }
         .status-success { color: #155724; background-color: #d4edda; }
         .status-danger { color: #721c24; background-color: #f8d7da; }
@@ -293,7 +324,53 @@ include '../templates/header.php';
         .status-primary { color: #004085; background-color: #cce5ff; }
         .no-orders { text-align: center; font-size: 1.1rem; color: #777; padding: 3rem 0; }
         
-        /* 6. Flash Messages */
+        /* CSS MỚI: Chi tiết sản phẩm trong đơn hàng */
+        .order-products {
+            margin-top: 1.5rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid #f0f0f0;
+        }
+        .product-item {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding: 10px 0;
+            border-bottom: 1px dashed #eee;
+        }
+        .product-item:last-child {
+            border-bottom: none;
+            padding-bottom: 0;
+        }
+        .product-img {
+            width: 60px;
+            height: 60px;
+            object-fit: cover;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+        }
+        .product-info-group {
+            flex-grow: 1;
+        }
+        .product-name {
+            font-weight: 500;
+            font-size: 1em;
+            color: var(--text-dark);
+            text-decoration: none;
+        }
+        .product-name:hover {
+            color: var(--color-primary);
+        }
+        .product-qty-price {
+            font-size: 0.9em;
+            color: var(--text-light);
+        }
+        .product-actions {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        /* 6. Flash Messages (Giữ nguyên) */
         .flash-message {
             padding: 1rem;
             border-radius: 6px;
@@ -316,142 +393,197 @@ include '../templates/header.php';
         unset($_SESSION['flash_message']);
     }
     ?>
-    <div class="account-container">
-        <aside class="sidebar">
-            <ul class="sidebar-nav">
-                <li class="sidebar-nav-item">
-                    <a href="account.php?tab=info" class="<?= ($tab == 'info') ? 'active' : '' ?>">
-                        <i class="fas fa-user-circle"></i> Thông tin tài khoản
-                    </a>
-                    <?php if ($tab == 'info'): ?>
-                    <ul class="submenu">
-                        <li class="submenu-item"><a href="account.php?tab=info&subtab=profile" class="<?= ($subtab == 'profile') ? 'active' : '' ?>">Hồ sơ của bạn</a></li>
-                        <li class="submenu-item"><a href="account.php?tab=info&subtab=changepass" class="<?= ($subtab == 'changepass') ? 'active' : '' ?>">Đổi mật khẩu</a></li>
-                    </ul>
-                    <?php endif; ?>
-                </li>
-                <li class="sidebar-nav-item"><a href="account.php?tab=orders" class="<?= ($tab == 'orders') ? 'active' : '' ?>"><i class="fas fa-receipt"></i> Đơn hàng của bạn</a></li>
-                <li class="sidebar-nav-item"><a href="logout.php"><i class="fas fa-sign-out-alt"></i> Đăng xuất</a></li>
-            </ul>
-        </aside>
-
-        <main class="main-content">
-            <?php if ($tab == 'info'): ?>
-                <h2>Thông Tin Tài Khoản</h2>
-                <?php if ($subtab == 'profile'): ?>
-                    <form method="post">
-                        <input type="hidden" name="action" value="update_profile">
-                        <div class="form-group">
-                            <label for="tenkhach">Họ và tên</label>
-                            <input type="text" id="tenkhach" name="tenkhach" class="form-control" value="<?= htmlspecialchars($customer['tenkhach']) ?>" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="ngaysinh">Ngày sinh</label>
-                            <input type="date" id="ngaysinh" name="ngaysinh" class="form-control" value="<?= htmlspecialchars($customer['ngaysinh']) ?>" required>
-                        </div>
-                        <div class="form-group">
-                            <label>Giới tính</label>
-                            <div class="gender-group">
-                                <label><input type="radio" name="gioitinh" value="Nam" <?= ($customer['gioitinh'] == 'Nam') ? 'checked' : '' ?>> Nam</label>
-                                <label><input type="radio" name="gioitinh" value="Nữ" <?= ($customer['gioitinh'] == 'Nữ') ? 'checked' : '' ?>> Nữ</label>
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label for="sodienthoai">Số điện thoại</label>
-                            <input type="tel" id="sodienthoai" name="sodienthoai" class="form-control" value="<?= htmlspecialchars($customer['sodienthoai']) ?>" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="diachi">Địa chỉ</label>
-                            <textarea id="diachi" name="diachi" class="form-control" rows="3" required><?= htmlspecialchars($customer['diachi']) ?></textarea>
-                        </div>
-                        <div class="form-actions">
-                            <button type="submit" class="btn btn-primary">Lưu thay đổi</button>
-                        </div>
-                    </form>
-                <?php elseif ($subtab == 'changepass'): ?>
-                    <form method="post">
-                        <input type="hidden" name="action" value="change_password">
-                        <div class="form-group">
-                            <label for="old_password">Mật khẩu cũ</label>
-                            <input type="password" name="old_password" id="old_password" class="form-control" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="new_password">Mật khẩu mới</label>
-                            <input type="password" name="new_password" id="new_password" class="form-control" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="confirm_password">Xác nhận mật khẩu mới</label>
-                            <input type="password" name="confirm_password" id="confirm_password" class="form-control" required>
-                        </div>
-                        <div class="form-group">
-                            <label class="show-password-label">
-                                <input type="checkbox" onclick="togglePasswordVisibility()">
-                                Hiển thị mật khẩu
-                            </label>
-                        </div>
-                        <div class="form-actions">
-                            <button type="submit" class="btn btn-primary">Đổi mật khẩu</button>
-                        </div>
-                    </form>
+    
+    <aside class="sidebar">
+        <ul class="sidebar-nav">
+            <li class="sidebar-nav-item">
+                <a href="account.php?tab=info" class="<?= ($tab == 'info') ? 'active' : '' ?>">
+                    <i class="fas fa-user-circle"></i> Thông tin tài khoản
+                </a>
+                <?php if ($tab == 'info'): ?>
+                <ul class="submenu">
+                    <li class="submenu-item"><a href="account.php?tab=info&subtab=profile" class="<?= ($subtab == 'profile') ? 'active' : '' ?>">Hồ sơ của bạn</a></li>
+                    <li class="submenu-item"><a href="account.php?tab=info&subtab=changepass" class="<?= ($subtab == 'changepass') ? 'active' : '' ?>">Đổi mật khẩu</a></li>
+                </ul>
                 <?php endif; ?>
-            <?php elseif ($tab == 'orders'): ?>
-                <h2>Đơn hàng của bạn</h2>
-                <?php
-                    $order_sql = "SELECT * FROM tbDonHang WHERE makhach = ? ORDER BY ngaymua DESC";
-                    $stmt_order = $pdo->prepare($order_sql);
-                    $stmt_order->execute([$makhach]);
-                    $orders = $stmt_order->fetchAll();
+            </li>
+            <li class="sidebar-nav-item"><a href="account.php?tab=orders" class="<?= ($tab == 'orders') ? 'active' : '' ?>"><i class="fas fa-receipt"></i> Đơn hàng của bạn</a></li>
+            
+            <li class="sidebar-nav-item">
+                <a href="tracking.php" class="<?= ($tab == 'tracking') ? 'active' : '' ?>">
+                    <i class="fas fa-truck"></i> Theo Dõi Đơn Hàng
+                </a>
+            </li>
+            <li class="sidebar-nav-item"><a href="logout.php"><i class="fas fa-sign-out-alt"></i> Đăng xuất</a></li>
+        </ul>
+    </aside>
 
-                    if (count($orders) > 0):
-                        foreach ($orders as $order):
-                            $total_sql = "SELECT SUM(soluong * dongia) AS total FROM tbChiTietDonHang WHERE madonhang = ?";
-                            $stmt_total = $pdo->prepare($total_sql);
-                            $stmt_total->execute([$order['madonhang']]);
-                            $total_amount = $stmt_total->fetchColumn();
+    <div class="page-wrapper">
+        <div class="account-container"> 
+            <main class="main-content">
+                <?php if ($tab == 'info'): ?>
+                    <h2>Thông Tin Tài Khoản</h2>
+                    <?php if ($subtab == 'profile'): ?>
+                        <form method="post">
+                            <input type="hidden" name="action" value="update_profile">
+                            <div class="form-group">
+                                <label for="tenkhach">Họ và tên</label>
+                                <input type="text" id="tenkhach" name="tenkhach" class="form-control" value="<?= htmlspecialchars($customer['tenkhach'] ?? '') ?>" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="ngaysinh">Ngày sinh</label>
+                                <input type="date" id="ngaysinh" name="ngaysinh" class="form-control" value="<?= htmlspecialchars($customer['ngaysinh'] ?? '') ?>" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Giới tính</label>
+                                <div class="gender-group">
+                                    <label><input type="radio" name="gioitinh" value="Nam" <?= (($customer['gioitinh'] ?? '') == 'Nam') ? 'checked' : '' ?>> Nam</label>
+                                    <label><input type="radio" name="gioitinh" value="Nữ" <?= (($customer['gioitinh'] ?? '') == 'Nữ') ? 'checked' : '' ?>> Nữ</label>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label for="sodienthoai">Số điện thoại</label>
+                                <input type="tel" id="sodienthoai" name="sodienthoai" class="form-control" value="<?= htmlspecialchars($customer['sodienthoai'] ?? '') ?>" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="diachi">Địa chỉ</label>
+                                <textarea id="diachi" name="diachi" class="form-control" rows="3" required><?= htmlspecialchars($customer['diachi'] ?? '') ?></textarea>
+                            </div>
+                            <div class="form-actions">
+                                <button type="submit" class="btn btn-primary">Lưu thay đổi</button>
+                            </div>
+                        </form>
+                    <?php elseif ($subtab == 'changepass'): ?>
+                        <form method="post">
+                            <input type="hidden" name="action" value="change_password">
+                            <div class="form-group">
+                                <label for="old_password">Mật khẩu cũ</label>
+                                <input type="password" name="old_password" id="old_password" class="form-control" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="new_password">Mật khẩu mới</label>
+                                <input type="password" name="new_password" id="new_password" class="form-control" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="confirm_password">Xác nhận mật khẩu mới</label>
+                                <input type="password" name="confirm_password" id="confirm_password" class="form-control" required>
+                            </div>
+                            <div class="form-group">
+                                <label class="show-password-label">
+                                    <input type="checkbox" onclick="togglePasswordVisibility()">
+                                    Hiển thị mật khẩu
+                                </label>
+                            </div>
+                            <div class="form-actions">
+                                <button type="submit" class="btn btn-primary">Đổi mật khẩu</button>
+                            </div>
+                        </form>
+                    <?php endif; ?>
+                <?php elseif ($tab == 'orders'): ?>
+                    <h2>Đơn hàng của bạn</h2>
+                    <?php
+                        // CẬP NHẬT: Thêm cột tongtiendonhang vào truy vấn
+                        $order_sql = "SELECT * FROM tbDonHang WHERE makhach = ? ORDER BY ngaymua DESC";
+                        $stmt_order = $pdo->prepare($order_sql);
+                        $stmt_order->execute([$makhach]);
+                        $orders = $stmt_order->fetchAll();
 
-                            $status_class = '';
-                            switch ($order['tinhtrang']) {
-                                case 'Đã giao': $status_class = 'status-success'; break;
-                                case 'Đã hủy': $status_class = 'status-danger'; break;
-                                case 'Đang giao hàng': $status_class = 'status-warning'; break;
-                                default: $status_class = 'status-primary'; break;
-                            }
-                ?>
-                    <div class="order-card">
-                        <div class="order-header">
-                            <div>
-                                <span class="order-id">Mã ĐH: <?= htmlspecialchars($order['madonhang']) ?></span>
-                                <span class="order-date"> | Ngày: <?= htmlspecialchars($order['ngaymua']) ?></span>
-                            </div>
-                            <span class="order-status <?= $status_class ?>"><?= htmlspecialchars($order['tinhtrang']) ?></span>
-                        </div>
-                        <div class="order-details">
-                            <span class="order-total">Tổng giá trị: <?= number_format($total_amount, 0) ?> VND</span>
-                            <div class="order-actions">
-                                <a href="order_detail.php?madonhang=<?= htmlspecialchars($order['madonhang']) ?>" class="btn btn-secondary">
-                                   <i class="fas fa-eye"></i> Xem
-                                </a>
-                                <?php if (in_array($order['tinhtrang'], ['Mới', 'Chờ xử lý'])): ?>
-                                <form action="account.php?tab=orders" method="post" onsubmit="return confirm('Bạn có chắc chắn muốn HỦY đơn hàng này?');" style="display:inline;">
-                                    <input type="hidden" name="action" value="cancel_order">
-                                    <input type="hidden" name="order_id" value="<?= htmlspecialchars($order['madonhang']) ?>">
-                                    <button type="submit" class="btn btn-danger">
-                                        <i class="fas fa-times-circle"></i> Hủy
-                                    </button>
-                                </form>
-                                <?php endif; ?>
-                            </div>
-                        </div>
-                    </div>
-                <?php 
-                        endforeach;
-                    else:
-                        echo "<p class='no-orders'>Bạn chưa có đơn hàng nào.</p>";
-                    endif;
-                ?>
-            <?php endif; ?>
-        </main>
+                        if (count($orders) > 0):
+                            foreach ($orders as $order):
+                                // KHÔNG CẦN TÍNH TOÁN LẠI TỔNG TIỀN NỮA
+                                // $total_sql = "SELECT SUM(soluong * dongia) AS total FROM tbChiTietDonHang WHERE madonhang = ?";
+                                // $stmt_total = $pdo->prepare($total_sql);
+                                // $stmt_total->execute([$order['madonhang']]);
+                                // $total_amount = $stmt_total->fetchColumn();
+
+                                // LẤY TRỰC TIẾP TỪ CỘT tongtiendonhang
+                                $total_amount = $order['tongtiendonhang'];
+
+                                $status_class = '';
+                                switch ($order['tinhtrang']) {
+                                    case 'Đã giao': $status_class = 'status-success'; break;
+                                    case 'Đã hủy': $status_class = 'status-danger'; break;
+                                    case 'Đang giao hàng': $status_class = 'status-warning'; break;
+                                    default: $status_class = 'status-primary'; break;
+                                }
+                            ?>
+                                <div class="order-card">
+                                    <div class="order-header">
+                                        <div>
+                                            <span class="order-id">Mã ĐH: <?= htmlspecialchars($order['madonhang']) ?></span>
+                                            <span class="order-date"> | Ngày: <?= date('d/m/Y', strtotime($order['ngaymua'])) ?></span>
+                                        </div>
+                                        <span class="order-status <?= $status_class ?>"><?= htmlspecialchars($order['tinhtrang']) ?></span>
+                                    </div>
+                                    <div class="order-details">
+                                        <span class="order-total">Tổng giá trị: <?= number_format($total_amount, 0) ?> VND</span>
+                                        <div class="order-actions">
+                                            <a href="order_detail.php?madonhang=<?= htmlspecialchars($order['madonhang']) ?>" class="btn btn-secondary">
+                                                <i class="fas fa-eye"></i> Xem
+                                            </a>
+                                            <a href="tracking.php?madonhang=<?= htmlspecialchars($order['madonhang']) ?>" class="btn btn-primary">
+                                                <i class="fas fa-truck"></i> Theo Dõi
+                                            </a>
+                                            <?php if (in_array($order['tinhtrang'], ['Mới', 'Chờ xử lý'])): ?>
+                                            <form action="account.php?tab=orders" method="post" onsubmit="return confirm('Bạn có chắc chắn muốn HỦY đơn hàng này?');" style="display:inline;">
+                                                <input type="hidden" name="action" value="cancel_order">
+                                                <input type="hidden" name="order_id" value="<?= htmlspecialchars($order['madonhang']) ?>">
+                                                <button type="submit" class="btn btn-danger">
+                                                    <i class="fas fa-times-circle"></i> Hủy
+                                                </button>
+                                            </form>
+                                            <?php endif; ?>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="order-products">
+                                        <?php
+                                        $detail_sql = "
+                                            SELECT 
+                                                ctdh.mahang, ctdh.soluong, ctdh.dongia, mh.tenhang, mh.hinhanh
+                                            FROM tbChiTietDonHang ctdh
+                                            JOIN tbmathang mh ON ctdh.mahang = mh.mahang
+                                            WHERE ctdh.madonhang = ?
+                                        ";
+                                        $stmt_detail = $pdo->prepare($detail_sql);
+                                        $stmt_detail->execute([$order['madonhang']]);
+                                        $products = $stmt_detail->fetchAll();
+
+                                        foreach ($products as $product):
+                                        ?>
+                                            <div class="product-item">
+                                                <img src="../assets/images/<?= htmlspecialchars($product['hinhanh']) ?>" alt="<?= htmlspecialchars($product['tenhang']) ?>" class="product-img">
+                                                <div class="product-info-group">
+                                                    <a href="product_detail.php?mahang=<?= htmlspecialchars($product['mahang']) ?>" class="product-name">
+                                                        <?= htmlspecialchars($product['tenhang']) ?>
+                                                    </a>
+                                                    <div class="product-qty-price">
+                                                        Số lượng: <?= htmlspecialchars($product['soluong']) ?> | Đơn giá: <?= number_format($product['dongia'], 0) ?> VND
+                                                    </div>
+                                                </div>
+                                                
+                                                <div class="product-actions">
+                                                    <?php if ($order['tinhtrang'] == 'Đã giao'): ?>
+                                                        <a href="product_detail.php?mahang=<?= htmlspecialchars($product['mahang']) ?>#reviews" class="btn btn-review">
+                                                            <i class="fas fa-star"></i> Đánh giá
+                                                        </a>
+                                                    <?php endif; ?>
+                                                </div>
+                                            </div>
+                                        <?php endforeach; ?>
+                                    </div>
+                                    </div>
+                            <?php 
+                                endforeach;
+                            else:
+                                echo "<p class='no-orders'>Bạn chưa có đơn hàng nào.</p>";
+                            endif;
+                        ?>
+                <?php endif; ?>
+            </main>
+        </div>
     </div>
+    
     <script>
         function togglePasswordVisibility() {
             ["old_password", "new_password", "confirm_password"].forEach(id => {

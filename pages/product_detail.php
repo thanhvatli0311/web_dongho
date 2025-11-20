@@ -2,8 +2,8 @@
 session_start();
 // Sử dụng require_once để đảm bảo file db.php được nhúng thành công và biến $pdo được tạo
 require_once '../includes/db.php'; 
-include '../templates/header.php';
-
+require_once '../templates/header.php';
+require_once '../includes/functions.php';
 // Tính số lượng sản phẩm duy nhất trong giỏ hàng từ session
 $cart_count = 0;
 if (isset($_SESSION['cart']) && !empty($_SESSION['cart'])) {
@@ -173,8 +173,6 @@ document.querySelectorAll('.add-to-cart-btn').forEach(button => {
                 // Cập nhật số đếm giỏ hàng trên header
                 const badge = document.querySelector('.cart-box .cart-count');
                 if (badge) {
-                    // Cảnh báo: Logic này không chính xác 100% vì chưa check trùng lặp, nhưng giữ nguyên theo yêu cầu.
-                    // Để chính xác, cần response từ cart.php trả về số lượng mới.
                     badge.textContent = parseInt(badge.textContent) + 1;
                 } else {
                     const cartLink = document.querySelector('.cart-box .cart-link');
@@ -519,20 +517,40 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['review_submit'])) {
         $review_content = trim($_POST['review_content']);
         $mahang_review = $mahang;
 
+        // KIỂM TRA QUYỀN ĐÁNH GIÁ (ĐÃ MUA VÀ 'Đã giao')
+        $purchase_sql = "
+            SELECT COUNT(*) AS cnt
+            FROM tbdonhang dh
+            JOIN tbchitietdonhang ctdh ON dh.madonhang = ctdh.madonhang
+            JOIN tbkhachhang kh ON dh.makhach = kh.makhach
+            WHERE kh.username = ? AND ctdh.mahang = ? AND dh.tinhtrang = 'Đã giao'
+        ";
         try {
-            // Kiểm tra user đã đánh giá chưa (PDO)
+            $stmt_purchase = $pdo->prepare($purchase_sql);
+            $stmt_purchase->execute([$user, $mahang_review]);
+            $cnt = $stmt_purchase->fetchColumn();
+        } catch (PDOException $e) {
+            echo "<div style='color:red;text-align:center;margin-bottom:10px;'>Lỗi hệ thống khi kiểm tra đơn hàng.</div>";
+            exit; 
+        }
+
+        if ((int)$cnt === 0) {
+            echo "<div style='color:red;text-align:center;margin-bottom:10px;'>Bạn chỉ có quyền đánh giá sản phẩm sau khi đã mua và đơn hàng đã ở trạng thái 'Đã giao'.</div>";
+            exit;
+        }
+        
+        // INSERT/UPDATE ĐÁNH GIÁ
+        try {
             $check_sql = "SELECT id FROM tbreview WHERE mahang=? AND username=?";
             $stmt_check = $pdo->prepare($check_sql);
             $stmt_check->execute([$mahang_review, $user]);
             $row = $stmt_check->fetch();
 
             if ($row) {
-                // Nếu đã tồn tại thì update (PDO)
                 $sql = "UPDATE tbreview SET rating=?, content=?, created_at=NOW() WHERE mahang=? AND username=?";
                 $stmt = $pdo->prepare($sql);
                 $stmt->execute([$rating, $review_content, $mahang_review, $user]);
             } else {
-                // Nếu chưa có đánh giá thì insert mới (PDO)
                 $sql = "INSERT INTO tbreview (mahang, username, rating, content) VALUES (?, ?, ?, ?)";
                 $stmt = $pdo->prepare($sql);
                 $stmt->execute([$mahang_review, $user, $rating, $review_content]);
@@ -541,7 +559,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['review_submit'])) {
             echo "<script>location.href='" . $_SERVER['REQUEST_URI'] . "';</script>"; 
             exit;
         } catch (PDOException $e) {
-            echo "<div style='color:red;text-align:center;margin-bottom:10px;'>Lỗi CSDL: " . $e->getMessage() . "</div>";
+            echo "<div style='color:red;text-align:center;margin-bottom:10px;'>Lỗi CSDL khi lưu đánh giá: " . $e->getMessage() . "</div>";
         }
     } else {
         echo "<div style='color:red;text-align:center;margin-bottom:10px;'>Bạn cần đăng nhập để đánh giá sản phẩm!</div>";
@@ -584,7 +602,7 @@ if (isset($_SESSION['username'])) {
     <div class="review-list">
         <h4>Nhận xét của khách hàng</h4>
         <?php
-        $sql_reviews = "SELECT r.*, u.username FROM tbreview r JOIN tbuser u ON r.username=u.username WHERE r.mahang=? ORDER BY r.created_at DESC";
+        $sql_reviews = "SELECT r.*, u.username FROM tbreview r JOIN tbkhachhang u ON r.username=u.username WHERE r.mahang=? ORDER BY r.created_at DESC";
         $stmt_reviews = $pdo->prepare($sql_reviews);
         $stmt_reviews->execute([$mahang]);
         

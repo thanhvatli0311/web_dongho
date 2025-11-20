@@ -53,8 +53,14 @@ if (empty($madonhang)) {
 }
 
 try {
-    // Truy vấn thông tin đơn hàng và chi tiết sản phẩm
-    $sql_order = "SELECT dh.*, kh.tenkhach, kh.sodienthoai, kh.diachi FROM tbDonHang dh JOIN tbkhachhang kh ON dh.makhach = kh.makhach WHERE dh.madonhang = ? AND kh.username = ?";
+    // CẬP NHẬT TRUY VẤN: Lấy thêm thông tin khuyến mãi (LEFT JOIN)
+    $sql_order = "SELECT dh.*, kh.tenkhach, kh.sodienthoai, kh.diachi, 
+                         km.makhuyenmai, km.loai, km.giatri 
+                  FROM tbDonHang dh 
+                  JOIN tbkhachhang kh ON dh.makhach = kh.makhach 
+                  LEFT JOIN tbkhuyenmai km ON dh.makhuyenmai = km.makhuyenmai
+                  WHERE dh.madonhang = ? AND kh.username = ?";
+                  
     $stmt_order = $pdo->prepare($sql_order);
     $stmt_order->execute([$madonhang, $username]);
     $order = $stmt_order->fetch();
@@ -89,7 +95,6 @@ include '../templates/header.php';
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     
-    <!-- === CSS TỐI GIẢN ĐỒNG BỘ VỚI TRANG ACCOUNT === -->
     <style>
         :root {
             --color-primary: #007bff;
@@ -256,6 +261,10 @@ include '../templates/header.php';
                     }
                 ?>
                 <p><strong>Tình trạng:</strong> <span class="order-status <?= $status_class ?>"><?= htmlspecialchars($order['tinhtrang']) ?></span></p>
+                
+                <?php if (!empty($order['makhuyenmai'])): ?>
+                    <p><strong>Mã giảm giá:</strong> <span style="color: #28a745; font-weight:bold;"><?= htmlspecialchars($order['makhuyenmai']) ?></span></p>
+                <?php endif; ?>
             </div>
         </div>
 
@@ -271,11 +280,11 @@ include '../templates/header.php';
             </thead>
             <tbody>
                 <?php
-                $tong_cong = 0;
+                $tong_tam_tinh = 0;
                 if (!empty($items)):
                     foreach ($items as $item):
                         $thanhtien = $item['dongia'] * $item['soluong'];
-                        $tong_cong += $thanhtien;
+                        $tong_tam_tinh += $thanhtien;
                         $img_path = !empty($item['hinhanh']) ? "../assets/images/" . htmlspecialchars($item['hinhanh']) : "https://via.placeholder.com/60";
                 ?>
                 <tr>
@@ -294,9 +303,33 @@ include '../templates/header.php';
                 <?php endif; ?>
             </tbody>
             <tfoot>
+                <tr>
+                    <td colspan="4" class="text-right">Tạm tính:</td>
+                    <td class="text-right"><?= number_format($tong_tam_tinh, 0, ',', '.') ?> VND</td>
+                </tr>
+
+                <?php 
+                // Tính toán số tiền giảm giá để hiển thị
+                // Lưu ý: Tổng tiền thanh toán thực tế đã lưu trong tongtiendonhang, ta tính ngược lại tiền giảm để hiển thị cho đẹp
+                $tong_thanh_toan_thuc_te = $order['tongtiendonhang'];
+                $tien_giam = $tong_tam_tinh - $tong_thanh_toan_thuc_te;
+                
+                // Hoặc dùng logic tính từ bảng khuyến mãi nếu muốn hiển thị chi tiết %
+                $discount_desc = "";
+                if ($tien_giam > 0) {
+                     if (isset($order['loai']) && $order['loai'] === 'PHAN_TRAM') {
+                        $discount_desc = "(" . number_format($order['giatri'], 0) . "%)";
+                    }
+                ?>
+                <tr>
+                    <td colspan="4" class="text-right" style="color: #28a745;">Giảm giá <?= $discount_desc ?>:</td>
+                    <td class="text-right" style="color: #28a745;">-<?= number_format($tien_giam, 0, ',', '.') ?> VND</td>
+                </tr>
+                <?php } ?>
+
                 <tr class="total-row">
-                    <th colspan="4" class="text-right">Tổng cộng:</th>
-                    <td class="text-right total-amount"><?= number_format($tong_cong, 0, ',', '.') ?> VND</td>
+                    <th colspan="4" class="text-right">Tổng thanh toán:</th>
+                    <td class="text-right total-amount"><?= number_format($tong_thanh_toan_thuc_te, 0, ',', '.') ?> VND</td>
                 </tr>
             </tfoot>
         </table>

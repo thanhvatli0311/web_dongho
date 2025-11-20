@@ -1,19 +1,16 @@
-# Bắt đầu file model.py
 import mysql.connector
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.linear_model import SGDClassifier
 from sklearn.pipeline import Pipeline
 
-# Biến toàn cục để lưu model
 model = None 
 
-# === THÔNG TIN KẾT NỐI CSDL ===
-# --> Hãy đảm bảo thông tin này chính xác
+
 db_config = {
     'host': 'localhost',
-    'user': 'root', # User CSDL của bạn
-    'password': '', # Mật khẩu CSDL của bạn
-    'database': 'dbdongho' # Tên CSDL của bạn
+    'user': 'root', 
+    'password': '',
+    'database': 'dbdongho'
 }
 
 def load_data_from_db():
@@ -45,7 +42,7 @@ def load_data_from_db():
         print(f"Lỗi CSDL: {err}")
         return [], []
 
-def train_model(): # <--- ĐÂY LÀ HÀM BỊ THIẾU
+def train_model():
     """Hàm huấn luyện lại model từ đầu."""
     global model
     print("Bắt đầu quá trình huấn luyện từ CSDL...")
