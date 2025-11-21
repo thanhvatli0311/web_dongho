@@ -3,11 +3,11 @@ session_start();
 
 // Sử dụng require với __DIR__ và file db.php đã thống nhất
 require __DIR__ . '/../includes/db.php'; 
-require __DIR__ . '/../templates/adminheader.php';
+
 
 // Kiểm tra quyền Admin
 if (!isset($_SESSION['username']) || $_SESSION['role'] !== 'Admin') {
-    header("Location: ../login.php");
+    header("Location: ../pages/login.php");
     exit;
 }
 
@@ -80,7 +80,7 @@ try {
 }
 
 ?>
-
+<?php require __DIR__ . '/../templates/adminheader.php'; ?>
 <!-- Phần HTML và CSS giữ nguyên như code cũ của bạn -->
 <!DOCTYPE html>
 <html lang="vi">

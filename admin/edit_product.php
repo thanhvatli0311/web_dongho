@@ -1,11 +1,11 @@
 <?php
 session_start();
 require __DIR__ . '/../includes/db.php';
-require __DIR__ . '/../templates/adminheader.php';
+
 
 // --- KIỂM TRA QUYỀN VÀ THAM SỐ ---
 if (!isset($_SESSION['username']) || $_SESSION['role'] !== 'Admin') {
-    header("Location: ../login.php");
+    header("Location: ../pages/login.php");
     exit;
 }
 
@@ -132,9 +132,7 @@ try {
 
 ?>
 
-<!-- ================================================================ -->
-<!-- ======================= PHẦN HTML VÀ GIAO DIỆN =================== -->
-<!-- ================================================================ -->
+<?php require __DIR__ . '/../templates/adminheader.php'; ?>
 <div class="container mt-5">
     
     <?php 

@@ -1,27 +1,18 @@
 <?php
 session_start();
-include '../includes/db.php';
+// Biến kết nối PDO là $pdo
+include '../includes/db.php'; 
 include '../templates/header.php';
 
+// Khởi tạo biến để lưu thông báo lỗi/thành công
+// Sử dụng Session để hiển thị thông báo ngay cả sau khi chuyển hướng
+$message = null;
+$message_type = null;
+
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    // Lấy mật khẩu và xác nhận mật khẩu từ form
+    // Lấy dữ liệu từ form
     $password_raw = $_POST['password'];
     $confirm_password = $_POST['confirm_password'];
-
-    // Kiểm tra xem mật khẩu và xác nhận mật khẩu có khớp nhau không
-    if ($password_raw !== $confirm_password) {
-        echo "Mật khẩu và xác nhận mật khẩu không khớp!";
-        exit;
-    }
-
-    // Kiểm tra mật khẩu theo yêu cầu: tối thiểu 8 ký tự, ít nhất 1 chữ hoa, 1 chữ thường, 1 ký tự đặc biệt
-    if (!preg_match('/^(?=.*[a-z])(?=.*[A-Z])(?=.*[\W_]).{8,}$/', $password_raw)) {
-        echo "Mật khẩu phải có tối thiểu 8 ký tự, bao gồm ít nhất 1 chữ hoa, 1 chữ thường và 1 ký tự đặc biệt!";
-        exit;
-    }
-
-    // Mã hóa mật khẩu
-    $password = password_hash($password_raw, PASSWORD_DEFAULT);
     $username = $_POST['username'];
     $role = 'Member';
     $customer_name = $_POST['customer_name'];
@@ -30,54 +21,91 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $ngaysinh = $_POST['ngaysinh'];
     $gender = $_POST['gender'];
 
-    // Kiểm tra username đã tồn tại chưa
-    $check_sql = "SELECT * FROM tbuser WHERE username = ?";
-    $stmt = $conn->prepare($check_sql);
-    $stmt->bind_param("s", $username);
-    $stmt->execute();
-    $check_result = $stmt->get_result();
+    // 1. Kiểm tra mật khẩu và xác nhận
+    if ($password_raw !== $confirm_password) {
+        $message = "Mật khẩu và xác nhận mật khẩu không khớp!";
+        $message_type = 'danger';
+    }
 
-    if ($check_result->num_rows > 0) {
-        echo "Tên đăng nhập đã tồn tại!";
-    } else {
-        // Thêm tài khoản vào tbuser
-        $sql = "INSERT INTO tbuser (username, password) VALUES (?, ?)";
-        $stmt = $conn->prepare($sql);
-        $stmt->bind_param("ss", $username, $password);
-        $stmt->execute();
+    // 2. Kiểm tra yêu cầu mật khẩu
+    if (!$message && !preg_match('/^(?=.*[a-z])(?=.*[A-Z])(?=.*[\W_]).{8,}$/', $password_raw)) {
+        $message = "Mật khẩu phải có tối thiểu 8 ký tự, bao gồm ít nhất 1 chữ hoa, 1 chữ thường và 1 ký tự đặc biệt!";
+        $message_type = 'danger';
+    }
 
-     
-        $today = date('Ymd'); 
-        $prefix = "KH" . $today;
-        
-        // Truy vấn CSDL để tìm mã khách hàng cuối cùng có định dạng bắt đầu bằng $prefix
-        $sql = "SELECT makhach FROM tbkhachhang WHERE makhach LIKE '$prefix%' ORDER BY makhach DESC LIMIT 1";
-        $result = $conn->query($sql);
-        
-        if ($result && $result->num_rows > 0) {
-            $row = $result->fetch_assoc();
-            // Lấy 3 ký tự cuối của mã và chuyển về số nguyên
-            $lastNumber = (int)substr($row['makhach'], -3);
-            $nextNumber = $lastNumber + 1;
-        } else {
-            $nextNumber = 1;
+    if (!$message) {
+        // Mã hóa mật khẩu
+        $password = password_hash($password_raw, PASSWORD_DEFAULT);
+
+        try {
+            // BẮT ĐẦU TRANSACTION để đảm bảo tính toàn vẹn dữ liệu
+            $pdo->beginTransaction();
+
+            // 3. Kiểm tra username đã tồn tại chưa (Dùng PDO)
+            $check_sql = "SELECT username FROM tbuser WHERE username = ?";
+            $stmt = $pdo->prepare($check_sql); 
+            $stmt->execute([$username]);
+
+            if ($stmt->rowCount() > 0) {
+                $message = "Tên đăng nhập đã tồn tại!";
+                $message_type = 'danger';
+                $pdo->rollBack(); // Rollback nếu đã bắt đầu transaction
+            } else {
+                
+                // 4. Thêm tài khoản vào tbuser (Dùng PDO)
+                $sql_user = "INSERT INTO tbuser (username, password) VALUES (?, ?)";
+                $stmt_user = $pdo->prepare($sql_user);
+                $stmt_user->execute([$username, $password]);
+                
+                // 5. TẠO MÃ KHÁCH HÀNG (Dùng PDO)
+                $today = date('Ymd'); 
+                $prefix = "KH" . $today;
+                
+                // Sử dụng PDO cho truy vấn không tham số
+                $sql_check_id = "SELECT makhach FROM tbkhachhang WHERE makhach LIKE '{$prefix}%' ORDER BY makhach DESC LIMIT 1";
+                // LƯU Ý: Không dùng prepare/execute cho truy vấn này nếu bạn không muốn dùng tham số.
+                // Tuy nhiên, để thống nhất, ta dùng prepare
+                $stmt_check_id = $pdo->prepare($sql_check_id);
+                $stmt_check_id->execute();
+
+                $nextNumber = 1;
+                if ($row = $stmt_check_id->fetch(PDO::FETCH_ASSOC)) {
+                    $lastNumber = (int)substr($row['makhach'], -3);
+                    $nextNumber = $lastNumber + 1;
+                }
+                $customer_id = $prefix . sprintf("%03d", $nextNumber);
+
+                // 6. Thêm thông tin khách hàng vào tbkhachhang (Dùng PDO)
+                $sql_khach = "INSERT INTO tbkhachhang (makhach, tenkhach, ngaysinh, gioitinh, sodienthoai, diachi, username) VALUES (?, ?, ?, ?, ?, ?, ?)";
+                $stmt_khach = $pdo->prepare($sql_khach);
+                // Truyền mảng tham số vào execute()
+                $stmt_khach->execute([$customer_id, $customer_name, $ngaysinh, $gender, $phone, $address, $username]);
+
+                // 7. Thêm quyền vào tbuserinrole (Dùng PDO)
+                $sql_role = "INSERT INTO tbuserinrole (username, role) VALUES (?, ?)";
+                $stmt_role = $pdo->prepare($sql_role);
+                $stmt_role->execute([$username, $role]);
+
+                // KẾT THÚC TRANSACTION
+                $pdo->commit();
+
+                // Chuyển hướng sau khi đăng ký thành công
+                $_SESSION['message'] = ['type' => 'success', 'content' => 'Đăng ký thành công! Bạn có thể đăng nhập ngay.'];
+                header("Location: login.php");
+                exit;
+            }
+        } catch (PDOException $e) {
+            // ROLLBACK nếu có lỗi
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            $message = 'Lỗi đăng ký: ' . $e->getMessage();
+            $message_type = 'danger';
         }
-        // Định dạng số thứ tự thành 3 ký tự (ví dụ: 001, 002, ...)
-        $customer_id = $prefix . sprintf("%03d", $nextNumber);
-
-        // Thêm thông tin khách hàng vào tbkhachhang (sử dụng ngày sinh thay vì tuổi)
-        $sql = "INSERT INTO tbkhachhang (makhach, tenkhach, ngaysinh, gioitinh, sodienthoai, diachi, username) VALUES (?, ?, ?, ?, ?, ?, ?)";
-        $stmt = $conn->prepare($sql);
-        $stmt->bind_param("sssssss", $customer_id, $customer_name, $ngaysinh, $gender, $phone, $address, $username);
-        $stmt->execute();
-
-        // Thêm quyền vào tbuserinrole
-        $sql = "INSERT INTO tbuserinrole (username, role) VALUES (?, ?)";
-        $stmt = $conn->prepare($sql);
-        $stmt->bind_param("ss", $username, $role);
-        $stmt->execute();
-
-        echo "Đăng ký thành công! Bạn có thể <a href='login.php'>đăng nhập</a> ngay.";
+    }
+    // Lưu message vào session để hiển thị sau khi form bị gửi lại
+    if ($message) {
+        $_SESSION['message'] = ['type' => $message_type, 'content' => $message];
     }
 }
 ?>
@@ -166,12 +194,39 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             margin: 0;
             padding: 0;
         }
+        /* Style cho message box (để hiển thị thông báo) */
+        .alert {
+            padding: 10px;
+            margin-bottom: 20px;
+            border-radius: 5px;
+            text-align: center;
+        }
+        .alert-danger {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .alert-success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
     </style>
 </head>
 
 <body>
+    
     <div class="container">
         <h2>Đăng ký tài khoản</h2>
+        
+        <?php 
+        // Hiển thị thông báo (nếu có)
+        if (isset($_SESSION['message'])) {
+            echo '<div class="alert alert-' . htmlspecialchars($_SESSION['message']['type']) . '">'. htmlspecialchars($_SESSION['message']['content']) .'</div>';
+            unset($_SESSION['message']);
+        }
+        ?>
+
         <form method="post" id="registerForm">
             <div class="input-group">
                 <label for="username">Tên đăng nhập:</label>
@@ -228,7 +283,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             cpwdInput.type = type;
         });
 
-        // Kiểm tra mật khẩu phía client trước khi submit
+        // Kiểm tra mật khẩu phía client trước khi submit (Giữ nguyên)
         document.getElementById('registerForm').addEventListener('submit', function(e) {
             var password = document.getElementById('password').value;
             var confirmPassword = document.getElementById('confirm_password').value;

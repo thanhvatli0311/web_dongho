@@ -1,80 +1,125 @@
 <?php
-// Đảm bảo file db.php đã được include trong file gọi (ví dụ: admin.php)
+/**
+ * bao_cao.php
+ * Các hàm truy vấn dữ liệu cho Dashboard - Đã tối ưu hóa.
+ */
 
 /**
- * Lấy số lượng và tổng giá trị đơn hàng theo trạng thái (PDO)
- * @param PDO $pdo Đối tượng kết nối PDO
- * @return array Mảng chứa dữ liệu thống kê trạng thái
+ * Trả về dữ liệu biểu đồ doanh thu theo ngày trong khoảng $startDate..$endDate
+ * - Trả về ['labels'=>[], 'data'=>[], 'total'=> float]
  */
-function getOrderStatusStats(PDO $pdo) { 
-    // 1. Chuẩn bị truy vấn: Lấy tình trạng và số lượng
-    $sql = "SELECT tinhtrang, COUNT(*) AS total_count 
-            FROM tbdonhang 
-            GROUP BY tinhtrang";
+function getRevenueChartData(PDO $pdo, string $startDate, string $endDate): array {
+    $start = date('Y-m-d', strtotime($startDate));
+    $end = date('Y-m-d', strtotime($endDate));
+
+    $sql = "
+        SELECT DATE(dh.ngaymua) AS order_date,
+               COALESCE(SUM(ct.soluong * ct.dongia), 0) AS daily_revenue
+        FROM tbdonhang dh
+        INNER JOIN tbchitietdonhang ct ON dh.madonhang = ct.madonhang
+        WHERE DATE(dh.ngaymua) BETWEEN :start AND :end
+          AND dh.tinhtrang = 'Đã giao'
+        GROUP BY order_date
+        ORDER BY order_date ASC
+    ";
+
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute([':start' => $start, ':end' => $end]);
+    $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    // Map ngày -> doanh thu
+    $map = array_column($rows, 'daily_revenue', 'order_date');
+
+    $labels = [];
+    $data = [];
+    $total = 0.0;
     
-    try {
-        $stmt = $pdo->prepare($sql);
-        $stmt->execute();
+    // Lấp đầy các ngày bị thiếu (rút gọn logic lặp)
+    $current = new DateTime($start);
+    $endDt = new DateTime($end);
+    $endDt->modify('+1 day');
+
+    while ($current < $endDt) {
+        $dateStr = $current->format('Y-m-d');
+        $labels[] = $current->format('d/m');
         
-        $stats = [];
-        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) { 
-            // Tách dữ liệu thành mảng để dễ dàng sử dụng cho Chart.js
-            $stats[] = [
-                'status' => $row['tinhtrang'],
-                'count'  => (int)$row['total_count']
-            ];
-        }
-        return $stats;
-    } catch (PDOException $e) {
-        // Xử lý lỗi PDO
-        error_log("Lỗi truy vấn trạng thái đơn hàng: " . $e->getMessage());
-        return [];
+        $value = (float)($map[$dateStr] ?? 0.0);
+        $data[] = $value;
+        $total += $value;
+        
+        $current->modify('+1 day');
     }
+
+    return [
+        'labels' => $labels,
+        'data' => $data,
+        'total' => $total
+    ];
 }
 
 /**
- * Lấy dữ liệu doanh thu hàng ngày trong 7 ngày gần nhất (Chỉ tính đơn 'Đã giao') (PDO)
- * @param PDO $pdo Đối tượng kết nối PDO
- * @return array Mảng chứa doanh thu theo ngày
+ * Trạng thái đơn hàng (doughnut chart)
  */
-function getWeeklyRevenue(PDO $pdo) {
-    // Truy vấn tổng hợp
-    $sql = "SELECT 
-                DATE(dh.ngaymua) AS order_date, 
-                SUM(ct.soluong * ct.dongia) AS daily_revenue 
-            FROM 
-                tbdonhang AS dh 
-            INNER JOIN 
-                tbchitietdonhang AS ct ON dh.madonhang = ct.madonhang 
-            WHERE 
-                dh.tinhtrang = 'Đã giao' 
-                AND dh.ngaymua >= DATE_SUB(CURDATE(), INTERVAL 7 DAY) 
-            GROUP BY 
-                order_date 
-            ORDER BY 
-                order_date ASC";
+function getOrderStatusStats(PDO $pdo): array {
+    $sql = "
+        SELECT tinhtrang, COUNT(*) AS total_count
+        FROM tbdonhang
+        GROUP BY tinhtrang
+        ORDER BY total_count DESC
+    ";
+    $stmt = $pdo->query($sql);
+    return $stmt->fetchAll(PDO::FETCH_ASSOC);
+}
+
+/**
+ * Top bán chạy theo số lượng (limit)
+ * - Đã thay đổi limit mặc định từ 5 xuống 3
+ */
+function getTopProducts(PDO $pdo, int $limit = 3, ?string $startDate = null, ?string $endDate = null): array {
+    $params = [];
+    $whereDate = "";
     
-    $revenue_data = [];
-    try {
-        $stmt = $pdo->prepare($sql);
-        $stmt->execute();
-        
-        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) { 
-            $revenue_data[$row['order_date']] = (float)$row['daily_revenue'];
-        }
-    } catch (PDOException $e) {
-        error_log("Lỗi truy vấn doanh thu hàng tuần: " . $e->getMessage());
+    if ($startDate !== null && $endDate !== null) {
+        $whereDate = " AND DATE(dh.ngaymua) BETWEEN :startDate AND :endDate ";
+        $params[':startDate'] = date('Y-m-d', strtotime($startDate));
+        $params[':endDate'] = date('Y-m-d', strtotime($endDate));
     }
 
-    // Đảm bảo đủ 7 ngày, gán 0 cho ngày không có doanh thu
-    $final_data = [];
-    for ($i = 6; $i >= 0; $i--) {
-        // Tạo chuỗi ngày (YYYY-MM-DD) của 7 ngày gần nhất
-        $date = date('Y-m-d', strtotime("-$i day"));
-        // Gán doanh thu (0 nếu không có trong CSDL)
-        $final_data[$date] = $revenue_data[$date] ?? 0;
+    $sql = "
+        SELECT 
+            sp.mahang,
+            sp.tenhang AS tensanpham,
+            sp.hinhanh,
+            COALESCE(SUM(ct.soluong),0) AS total_qty,
+            COALESCE(SUM(ct.soluong * ct.dongia),0) AS total_revenue
+        FROM tbchitietdonhang ct
+        INNER JOIN tbdonhang dh ON ct.madonhang = dh.madonhang
+        INNER JOIN tbmathang sp ON ct.mahang = sp.mahang
+        WHERE dh.tinhtrang = 'Đã giao'
+        {$whereDate}
+        GROUP BY sp.mahang, sp.tenhang, sp.hinhanh
+        ORDER BY total_qty DESC, total_revenue DESC
+        LIMIT :limit
+    ";
+
+    $stmt = $pdo->prepare($sql);
+    $stmt->bindValue(':limit', (int)$limit, PDO::PARAM_INT);
+
+    if (!empty($params)) {
+        foreach ($params as $k => $v) {
+            $stmt->bindValue($k, $v);
+        }
     }
-    
-    return $final_data;
+
+    $stmt->execute();
+    $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    // Cast fields
+    foreach ($rows as &$r) {
+        $r['total_qty'] = (int)($r['total_qty'] ?? 0);
+        $r['total_revenue'] = (float)($r['total_revenue'] ?? 0.0);
+    }
+
+    return $rows;
 }
 ?>

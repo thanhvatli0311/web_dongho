@@ -1,16 +1,17 @@
 <?php
 session_start();
 require __DIR__ . '/../includes/db.php';
-require __DIR__ . '/../templates/adminheader.php';
 
 if (!isset($_SESSION['username']) || $_SESSION['role'] !== 'Admin') {
-    header("Location: ../login.php");
+    // Điều hướng Login phải luôn ở trên cùng
+    header("Location: ../pages/login.php");
     exit;
 }
 if (!isset($pdo)) {
     die("Lỗi: Không thể kết nối CSDL.");
 }
 
+// 1. XỬ LÝ ĐIỀU HƯỚNG/HEADER PHẢI Ở ĐẦU FILE
 // Xử lý xóa đơn hàng
 if (isset($_GET['action']) && $_GET['action'] == 'delete' && isset($_GET['id'])) {
     $madonhang_to_delete = $_GET['id'];
@@ -24,6 +25,7 @@ if (isset($_GET['action']) && $_GET['action'] == 'delete' && isset($_GET['id']))
         $pdo->rollBack();
         $_SESSION['message'] = ['type' => 'danger', 'content' => 'Lỗi khi xóa đơn hàng: ' . $e->getMessage()];
     }
+    // Dòng header() này gây lỗi nếu có output trước đó
     header("Location: manage_orders.php");
     exit;
 }
@@ -39,9 +41,13 @@ if ($_SERVER['REQUEST_METHOD'] == "POST" && isset($_POST['update_status'])) {
     } catch (PDOException $e) {
         $_SESSION['message'] = ['type' => 'danger', 'content' => 'Lỗi cập nhật: ' . $e->getMessage()];
     }
+    // Dòng header() này gây lỗi nếu có output trước đó
     header("Location: manage_orders.php");
     exit;
 }
+
+// 2. INCLUDE HEADER SAU KHI ĐÃ XỬ LÝ XONG CÁC HÀM ĐIỀU HƯỚNG (header())
+require __DIR__ . '/../templates/adminheader.php'; // <== DÒNG NÀY ĐÃ ĐƯỢC DI CHUYỂN
 
 // Lấy các tham số tìm kiếm và lọc
 $search = isset($_GET['search']) ? trim($_GET['search']) : '';

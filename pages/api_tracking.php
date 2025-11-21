@@ -5,7 +5,7 @@ define('DB_HOST', 'localhost');
 define('DB_USER', 'root');
 define('DB_PASS', '');
 define('DB_NAME', 'dbdongho');
-define('GHTK_TOKEN', 'CHUACO');
+define('GHTK_TOKEN', '34UV7PnBnFeyFN7UPfXG1LWxVAzNR8EIAFrhSVq');
 
 /**
  * Kết nối đến cơ sở dữ liệu MySQL.

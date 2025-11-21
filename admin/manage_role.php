@@ -2,11 +2,11 @@
 session_start();
 // Chú ý: File db.php phải cung cấp biến $pdo (PDO instance)
 include '../includes/db.php';
-include '../templates/adminheader.php';
+
 
 // Kiểm tra nếu chưa đăng nhập hoặc không phải Admin thì chuyển hướng
 if (!isset($_SESSION['username']) || $_SESSION['role'] !== 'Admin') {
-    header("Location: ../login.php");
+    header("Location: ../pages/login.php");
     exit;
 }
 
@@ -66,7 +66,7 @@ try {
     die("Lỗi truy vấn danh sách người dùng: " . $e->getMessage());
 }
 ?>
-
+<?php include '../templates/adminheader.php'; ?>
 <!DOCTYPE html>
 <html lang="vi">
 

@@ -7,7 +7,7 @@ require __DIR__ . '/../templates/adminheader.php';
 
 // Kiểm tra nếu chưa đăng nhập hoặc không phải admin
 if (!isset($_SESSION['username']) || $_SESSION['role'] !== 'Admin') {
-    header("Location: ../login.php");
+    header("Location: ../pages/login.php");
     exit;
 }
 
