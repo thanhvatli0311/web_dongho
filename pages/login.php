@@ -4,15 +4,14 @@ include '../includes/db.php';
 
 $error_message = '';
 
-// Xử lý đăng nhập
+// Xử lý đăng nhập khi form được gửi đi
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    // 1. Lấy và làm sạch dữ liệu
-    // Sử dụng htmlspecialchars và ENT_QUOTES để ngăn chặn XSS nhẹ
+    // 1. Lấy và làm sạch dữ liệu đầu vào để ngăn chặn XSS
     $username = trim(htmlspecialchars($_POST['username'], ENT_QUOTES, 'UTF-8'));
     $password = $_POST['password'];
 
     try {
-        // 2. Truy vấn lấy thông tin user từ tbUser (Bước 1)
+        // 2. Truy vấn lấy thông tin user từ tbUser
         $sql = "SELECT username, password FROM tbUser WHERE username = :username";
         $stmt = $pdo->prepare($sql);
         $stmt->execute([':username' => $username]);
@@ -22,24 +21,22 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             // Không tìm thấy username
             $error_message = "Tên tài khoản không tồn tại!";
         } else {
-            // 3. Kiểm tra mật khẩu
+            // 3. Kiểm tra mật khẩu bằng hàm băm (hàm password_verify)
             if (password_verify($password, $user['password'])) {
                 
-                // 4. Lưu username vào session
+                // 4. Lưu username vào session sau khi xác thực thành công
                 $_SESSION['username'] = $username;
                 
-                // 5. Lấy role từ bảng tbUserInRole (Bước 2)
+                // 5. Lấy role từ bảng tbUserInRole
                 $role_sql = "SELECT role FROM tbUserInRole WHERE username = :username";
                 $stmt_role = $pdo->prepare($role_sql);
                 $stmt_role->execute([':username' => $username]);
                 $role_row = $stmt_role->fetch();
                 
-                // Nếu tìm thấy role, lưu vào session, ngược lại mặc định là Member
+                // Lưu role vào session (mặc định là Member nếu không tìm thấy)
                 $_SESSION['role'] = $role_row ? $role_row['role'] : 'Member';
 
-                // =========================================================
-                // START: LOGIC TẢI LẠI GIỎ HÀNG TỪ CSDL
-                // =========================================================
+                // LOGIC TẢI LẠI GIỎ HÀNG TỪ CSDL
                 try {
                     // 1. Lấy makhach từ tbkhachhang
                     $stmt_khach = $pdo->prepare("SELECT makhach FROM tbkhachhang WHERE username = :username");
@@ -56,7 +53,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         $saved_cart_items = $stmt_load->fetchAll(PDO::FETCH_ASSOC);
 
                         if (!empty($saved_cart_items)) {
-                            // Khởi tạo/ghi đè giỏ hàng trong session bằng dữ liệu đã lưu
+                            // Ghi đè giỏ hàng trong session bằng dữ liệu đã lưu
                             $_SESSION['cart'] = [];
                             
                             foreach ($saved_cart_items as $item) {
@@ -72,17 +69,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     }
                 } catch (PDOException $e) {
                     // Xử lý lỗi CSDL (có thể ghi log, nhưng không báo lỗi ra màn hình người dùng)
-                    // error_log("Lỗi tải giỏ hàng khi đăng nhập: " . $e->getMessage()); 
+                    // Ghi log lỗi để debug: error_log("Lỗi tải giỏ hàng khi đăng nhập: " . $e->getMessage()); 
                 }
-                // =========================================================
-                // END: LOGIC TẢI LẠI GIỎ HÀNG TỪ CSDL
-                // =========================================================
 
-                // 6. Chuyển hướng
+                // 6. Chuyển hướng người dùng dựa trên role
                 if ($_SESSION['role'] === 'Admin') {
                     header("Location: ../admin/admin.php");
                 } else {
-                    // Nếu có URL chuyển hướng trước khi đăng nhập (ví dụ: đang thanh toán)
+                    // Nếu có URL chuyển hướng trước (ví dụ: đang thanh toán) thì dùng nó
                     if (isset($_SESSION['redirect_url'])) {
                         $redirect_url = $_SESSION['redirect_url'];
                         unset($_SESSION['redirect_url']);
@@ -91,7 +85,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         header("Location: index.php");
                     }
                 }
-                exit;
+                exit; // Quan trọng: dừng script sau khi chuyển hướng
             } else {
                 // Sai mật khẩu
                 $error_message = "Mật khẩu không chính xác!";
@@ -99,11 +93,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         }
     } catch (PDOException $e) {
         $error_message = "Lỗi kết nối CSDL: Vui lòng thử lại sau.";
-        // error_log("Lỗi đăng nhập: " . $e->getMessage());
+        // Ghi log lỗi để debug: error_log("Lỗi đăng nhập: " . $e->getMessage());
     }
 }
 
-// Nội dung HTML và các file include khác giữ nguyên
+// Nội dung HTML/CSS
 include '../templates/header.php';
 ?>
 
@@ -116,7 +110,6 @@ include '../templates/header.php';
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
-        /* Thêm style CSS để giao diện đẹp hơn nếu cần */
         body {
             background-color: #f8f9fa;
         }

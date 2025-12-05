@@ -25,122 +25,113 @@ $seed = (int)($_GET['seed'] ?? mt_rand());
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Cửa Hàng Đồng Hồ Cao Cấp</title>
+    
+    <!-- CSS Thư viện -->
     <link rel="stylesheet" href="../LIB/fontawesome-free-6.4.2-web/css/all.min.css">
     <link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/slick-carousel/1.8.1/slick.css" />
     <link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/slick-carousel/1.8.1/slick-theme.css" />
+    
+    <!-- CSS Chính -->
     <link rel="stylesheet" href="../assets/css/style.css">
+    
+    <!-- CSS CHATBOT (NHÚNG TRỰC TIẾP) -->
+    <style>
+        /* 1. Nút mở Chat */
+        .chat-bubble {
+            position: fixed; bottom: 30px; right: 30px; width: 60px; height: 60px;
+            background: linear-gradient(135deg, #007bff, #0056b3);
+            border-radius: 50%; box-shadow: 0 4px 15px rgba(0, 123, 255, 0.4);
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer; z-index: 9999;
+            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+            animation: float 3s ease-in-out infinite;
+        }
+        .chat-bubble:hover { transform: scale(1.1) rotate(5deg); box-shadow: 0 6px 20px rgba(0, 123, 255, 0.6); }
+        .chat-bubble i { color: white; font-size: 28px; }
+        @keyframes float {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(-5px); }
+            100% { transform: translateY(0px); }
+        }
+
+        /* 2. Khung cửa sổ Chat */
+        .chat-window {
+            display: none; /* JS sẽ bật thành flex */
+            position: fixed; bottom: 100px; right: 30px; width: 360px; height: 500px;
+            max-height: 80vh; background-color: #ffffff; border-radius: 16px;
+            box-shadow: 0 5px 30px rgba(0, 0, 0, 0.15);
+            flex-direction: column; overflow: hidden; z-index: 9999;
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            border: 1px solid #f0f0f0; animation: slideUp 0.3s ease-out;
+        }
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* 3. Header */
+        .chat-header {
+            background: linear-gradient(135deg, #007bff, #004494);
+            padding: 15px 20px; color: white; display: flex;
+            justify-content: space-between; align-items: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+        .chat-header p { margin: 0; font-weight: 600; font-size: 16px; display: flex; align-items: center; gap: 8px; }
+        .close-chat-btn {
+            background: transparent; border: none; color: rgba(255, 255, 255, 0.8);
+            font-size: 24px; cursor: pointer; line-height: 1; transition: 0.2s;
+        }
+        .close-chat-btn:hover { color: #fff; transform: rotate(90deg); }
+
+        /* 4. Body */
+        .chat-body {
+            flex-grow: 1; padding: 15px; background-color: #f8f9fa;
+            overflow-y: auto; display: flex; flex-direction: column; gap: 10px; scroll-behavior: smooth;
+        }
+        .chat-body::-webkit-scrollbar { width: 6px; }
+        .chat-body::-webkit-scrollbar-thumb { background-color: #ccc; border-radius: 3px; }
+
+        /* 5. Messages */
+        .chat-message {
+            padding: 10px 14px; border-radius: 18px; font-size: 14px; line-height: 1.5;
+            max-width: 80%; word-wrap: break-word; position: relative; box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        }
+        .chat-message.bot {
+            background-color: #ffffff; color: #333; align-self: flex-start;
+            border-bottom-left-radius: 4px; border: 1px solid #e9ecef;
+        }
+        .chat-message.user {
+            background-color: #007bff; color: white; align-self: flex-end;
+            border-bottom-right-radius: 4px;
+        }
+        .typing-indicator {
+            font-size: 12px; color: #888; margin-left: 15px; margin-bottom: 5px; font-style: italic; display: none;
+        }
+
+        /* 6. Footer */
+        .chat-footer {
+            padding: 12px 15px; background-color: #fff; border-top: 1px solid #eee;
+            display: flex; align-items: center; gap: 10px;
+        }
+        #chat-input {
+            flex-grow: 1; padding: 10px 15px; border: 1px solid #ddd;
+            border-radius: 25px; outline: none; font-size: 14px; transition: border-color 0.3s;
+        }
+        #chat-input:focus { border-color: #007bff; }
+        #send-btn {
+            width: 40px; height: 40px; border: none; background-color: #007bff;
+            color: white; border-radius: 50%; cursor: pointer; display: flex;
+            align-items: center; justify-content: center; transition: background 0.3s, transform 0.2s;
+        }
+        #send-btn:hover { background-color: #0056b3; transform: scale(1.05); }
+        #send-btn i { font-size: 16px; margin-left: -2px; }
+
+        @media (max-width: 480px) {
+            .chat-window { width: 90%; bottom: 80px; right: 5%; height: 60vh; }
+            .chat-bubble { bottom: 20px; right: 20px; }
+        }
+    </style>
 </head>
-<style>
-    .chatbot-container {
-        position: fixed;
-        bottom: 20px;
-        right: 20px;
-        z-index: 1000;
-    }
-    .chatbot-icon {
-        width: 60px;
-        height: 60px;
-        background-color: #007bff;
-        border-radius: 50%;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        cursor: pointer;
-        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
-        transition: transform 0.3s ease;
-    }
-    .chatbot-icon:hover {
-        transform: scale(1.05);
-    }
-    .chatbot-icon img {
-        width: 40px;
-        height: 40px;
-        filter: invert(1);
-    }
-    .chatbox-widget {
-        display: none;
-        position: absolute;
-        bottom: 80px;
-        right: 0;
-        width: 350px;
-        height: 450px;
-        background-color: #fff;
-        border-radius: 10px;
-        box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
-        overflow: hidden;
-        display: flex;
-        flex-direction: column;
-    }
-    .chatbox-header {
-        background-color: #007bff;
-        color: white;
-        padding: 15px;
-        font-size: 16px;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        border-top-left-radius: 10px;
-        border-top-right-radius: 10px;
-    }
-    .chatbox-header h3 {
-        margin: 0;
-        font-size: 18px;
-    }
-    .close-button {
-        cursor: pointer;
-        font-size: 24px;
-        font-weight: bold;
-        line-height: 1;
-    }
-    .close-button:hover {
-        color: #ccc;
-    }
-    .chatbox-messages {
-        flex-grow: 1;
-        padding: 15px;
-        overflow-y: auto;
-        background-color: #f9f9f9;
-        word-wrap: break-word;
-    }
-    .chatbox-messages p {
-        margin-bottom: 8px;
-        line-height: 1.4;
-        font-size: 14px;
-    }
-    .chatbox-messages p strong {
-        color: #007bff;
-    }
-    .chatbox-messages p strong:first-child {
-        color: #28a745;
-    }
-    .chatbox-input {
-        display: flex;
-        padding: 10px;
-        border-top: 1px solid #eee;
-        background-color: #fff;
-    }
-    .chatbox-input input[type="text"] {
-        flex-grow: 1;
-        padding: 10px;
-        border: 1px solid #ddd;
-        border-radius: 5px;
-        margin-right: 10px;
-        font-size: 14px;
-    }
-    .chatbox-input button {
-        background-color: #007bff;
-        color: white;
-        border: none;
-        padding: 10px 15px;
-        border-radius: 5px;
-        cursor: pointer;
-        transition: background-color 0.2s ease;
-        font-size: 14px;
-    }
-    .chatbox-input button:hover {
-        background-color: #0056b3;
-    }
-</style>
 
 <body>
 
@@ -251,43 +242,25 @@ $seed = (int)($_GET['seed'] ?? mt_rand());
 
             if (!empty($price_range)) {
                 switch ($price_range) {
-                    case '0-50000000':
-                        $where .= " AND dongia <= 50000000";
-                        break;
-                    case '50000000-200000000':
-                        $where .= " AND dongia BETWEEN 50000000 AND 200000000";
-                        break;
-                    case '200000000-500000000':
-                        $where .= " AND dongia BETWEEN 200000000 AND 500000000";
-                        break;
-                    case '500000000-1000000000':
-                        $where .= " AND dongia BETWEEN 500000000 AND 1000000000";
-                        break;
-                    case '1000000000+':
-                        $where .= " AND dongia > 1000000000";
-                        break;
+                    case '0-50000000': $where .= " AND dongia <= 50000000"; break;
+                    case '50000000-200000000': $where .= " AND dongia BETWEEN 50000000 AND 200000000"; break;
+                    case '200000000-500000000': $where .= " AND dongia BETWEEN 200000000 AND 500000000"; break;
+                    case '500000000-1000000000': $where .= " AND dongia BETWEEN 500000000 AND 1000000000"; break;
+                    case '1000000000+': $where .= " AND dongia > 1000000000"; break;
                 }
             }
 
             $order_by = "ORDER BY RAND($seed)";
-            if ($sort === "price_asc") {
-                $order_by = "ORDER BY dongia ASC";
-            } elseif ($sort === "price_desc") {
-                $order_by = "ORDER BY dongia DESC";
-            }
+            if ($sort === "price_asc") { $order_by = "ORDER BY dongia ASC"; }
+            elseif ($sort === "price_desc") { $order_by = "ORDER BY dongia DESC"; }
             
             $sql = "SELECT * FROM tbmathang $where $order_by LIMIT :limit OFFSET :offset";
 
             try {
                 $stmt = $pdo->prepare($sql);
-                
-                foreach ($params as $key => $value) {
-                    $stmt->bindValue($key, $value);
-                }
-                
+                foreach ($params as $key => $value) { $stmt->bindValue($key, $value); }
                 $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
                 $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
-
                 $stmt->execute();
                 $result = $stmt->fetchAll(PDO::FETCH_ASSOC);
             } catch (PDOException $e) {
@@ -319,29 +292,20 @@ $seed = (int)($_GET['seed'] ?? mt_rand());
     <div class="pagination">
         <?php
         $sql_total = "SELECT COUNT(*) AS count FROM tbmathang $where";
-        
         try {
             $stmt_total = $pdo->prepare($sql_total);
             $stmt_total->execute($params);
             $total_items = $stmt_total->fetch(PDO::FETCH_ASSOC)['count'];
-        } catch (PDOException $e) {
-            die("Lỗi truy vấn tổng số (phân trang): " . $e->getMessage());
-        }
-
+        } catch (PDOException $e) { die("Lỗi truy vấn tổng số: " . $e->getMessage()); }
         $total_pages = ceil($total_items / $limit) ?: 1;
-
         $pagination_query_params = '&seed=' . $seed . '&search=' . urlencode($search) . '&brand=' . urlencode($brand) . '&price_range=' . urlencode($price_range) . '&sort=' . urlencode($sort);
 
-        if ($page > 1) {
-            echo '<a href="index.php?page=' . ($page - 1) . $pagination_query_params . '">« Trước</a>';
-        }
+        if ($page > 1) { echo '<a href="index.php?page=' . ($page - 1) . $pagination_query_params . '">« Trước</a>'; }
         for ($i = 1; $i <= $total_pages; $i++) {
             $active = ($i == $page) ? 'active' : '';
             echo '<a class="' . $active . '" href="index.php?page=' . $i . $pagination_query_params . '">' . $i . '</a>';
         }
-        if ($page < $total_pages) {
-            echo '<a href="index.php?page=' . ($page + 1) . $pagination_query_params . '">Sau »</a>';
-        }
+        if ($page < $total_pages) { echo '<a href="index.php?page=' . ($page + 1) . $pagination_query_params . '">Sau »</a>'; }
         ?>
     </div>
 
@@ -349,149 +313,212 @@ $seed = (int)($_GET['seed'] ?? mt_rand());
         <i class="fas fa-check-circle"></i> Sản phẩm đã được thêm vào giỏ hàng!
     </div>
 
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/slick-carousel/1.8.1/slick.min.js"></script>
-    <script>
-        $(document).ready(function() {
-            
-            $(".add-to-cart").click(function() {
-                if ($(this).is(':disabled')) return;
-                var item_id = $(this).data("id");
-                
-                $.ajax({
-                    url: "cart.php",
-                    type: "GET",
-                    data: {
-                        add_to_cart: item_id,
-                        get_count: true
-                    },
-                    success: function(response) {
-                        var new_cart_count = parseInt(response);
-                        
-                        $("#toast").fadeIn(400).delay(1500).fadeOut(400);
-
-                        if (isNaN(new_cart_count) || new_cart_count < 0) {
-                            console.error("Lỗi: Server không trả về số lượng giỏ hàng hợp lệ.");
-                            return;
-                        }
-
-                        // Ưu tiên gọi hàm updateCartDisplay (nếu đã thêm ở header)
-                        if (typeof updateCartDisplay === 'function') {
-                            updateCartDisplay(new_cart_count);
-                        } else {
-                            // Dự phòng: Tìm theo ID hoặc Class (để đồng bộ với trang chi tiết)
-                            var badge = $("#header-cart-count");
-                            if (badge.length === 0) {
-                                badge = $(".cart-box .cart-count");
-                            }
-
-                            if (new_cart_count > 0) {
-                                if (badge.length === 0) {
-                                    // Nếu chưa có badge (số lượng từ 0 lên 1) và tìm không thấy, thêm vào
-                                    $(".cart-box a").append('<span class="cart-count">' + new_cart_count + '</span>');
-                                } else {
-                                    badge.text(new_cart_count).show();
-                                }
-                            } else {
-                                badge.hide();
-                            }
-                        }
-                    },
-                    error: function() {
-                        alert("Có lỗi xảy ra, vui lòng thử lại!");
-                    }
-                });
-            });
-
-            $('.carousel-container').slick({
-                slidesToShow: 4,
-                slidesToScroll: 4,
-                infinite: true,
-                autoplay: true,
-                autoplaySpeed: 3000,
-                arrows: true,
-                prevArrow: '<button type="button" class="slick-prev"></button>',
-                nextArrow: '<button type="button" class="slick-next"></button>',
-                responsive: [{
-                        breakpoint: 1024,
-                        settings: {
-                            slidesToShow: 3,
-                            slidesToScroll: 3
-                        }
-                    },
-                    {
-                        breakpoint: 768,
-                        settings: {
-                            slidesToShow: 2,
-                            slidesToScroll: 2
-                        }
-                    },
-                    {
-                        breakpoint: 480,
-                        settings: {
-                            slidesToShow: 1,
-                            slidesToScroll: 1
-                        }
-                    }
-                ]
-            });
-
-            let slideIndex = 1;
-            showSlides(slideIndex);
-            window.plusSlides = function(n) {
-                showSlides(slideIndex += n);
-            }
-            window.currentSlide = function(n) {
-                showSlides(slideIndex = n);
-            }
-
-            function showSlides(n) {
-                let i;
-                let slides = document.getElementsByClassName("mySlides");
-                let dots = document.getElementsByClassName("dot");
-                if (n > slides.length) {
-                    slideIndex = 1;
-                }
-                if (n < 1) {
-                    slideIndex = slides.length;
-                }
-                for (i = 0; i < slides.length; i++) {
-                    slides[i].style.display = "none";
-                }
-                for (i = 0; i < dots.length; i++) {
-                    dots[i].className = dots[i].className.replace(" active", "");
-                }
-                slides[slideIndex - 1].style.display = "block";
-                dots[slideIndex - 1].className += " active";
-            }
-        });
-    </script>
-    <?php include '../templates/footer.php'; ?>
+    <!-- ================== WIDGET CHATBOT (HTML) ================== -->
     <div id="chat-bubble" class="chat-bubble">
-        <img src="../assets/images/chatbot.png" alt="Chat" width="60"> </div>
+        <i class="fas fa-comment-dots"></i>
+    </div>
 
     <div id="chat-window" class="chat-window">
         <div class="chat-header">
-            <p>Trợ lý Đồng hồ</p>
+            <p>🤖 Trợ lý ảo & Hỗ trợ</p>
             <button id="close-chat" class="close-chat-btn">&times;</button>
         </div>
+        
         <div id="chat-body" class="chat-body">
+            <!-- Tin nhắn chào mừng -->
             <div class="chat-message bot">
-                <p>Xin chào! Tôi có thể giúp gì cho bạn? Bạn có thể hỏi về:</p>
-                <ul>
-                    <li>Mẫu mới nhất</li>
-                    <li>Chính sách bảo hành</li>
-                </ul>
+                Xin chào! Em có thể giúp gì cho anh/chị ạ?
             </div>
         </div>
+
+        <div id="typing-indicator" class="typing-indicator">Đang trả lời...</div>
+
         <div class="chat-footer">
-            <input type="text" id="chat-input" placeholder="Nhập tin nhắn...">
-            <button id="send-btn">Gửi</button>
+            <input type="text" id="chat-input" placeholder="Nhập tin nhắn..." autocomplete="off">
+            <button id="send-btn"><i class="fas fa-paper-plane"></i></button>
         </div>
     </div>
+    <!-- ================== END WIDGET ================== -->
 
-    <link rel="stylesheet" href="../chatbot/chatbot.css">
-    <script src="../chatbot/chatbot.js"></script>
+    <?php include '../templates/footer.php'; ?>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/slick-carousel/1.8.1/slick.min.js"></script>
+    
+    <!-- ================== JAVASCRIPT CHATBOT (NHÚNG TRỰC TIẾP) ================== -->
+    <script>
+    $(document).ready(function() {
+        // === 1. LOGIC WEBSITE (SLIDER & CART) ===
+        $(".add-to-cart").click(function() {
+            if ($(this).is(':disabled')) return;
+            var item_id = $(this).data("id");
+            $.ajax({
+                url: "cart.php", type: "GET", data: { add_to_cart: item_id, get_count: true },
+                success: function(response) {
+                    var new_cart_count = parseInt(response);
+                    $("#toast").fadeIn(400).delay(1500).fadeOut(400);
+                    if (typeof updateCartDisplay === 'function') { updateCartDisplay(new_cart_count); }
+                    else {
+                        var badge = $("#header-cart-count");
+                        if (badge.length === 0) badge = $(".cart-box .cart-count");
+                        if (new_cart_count > 0) {
+                            if (badge.length === 0) $(".cart-box a").append('<span class="cart-count">' + new_cart_count + '</span>');
+                            else badge.text(new_cart_count).show();
+                        } else badge.hide();
+                    }
+                },
+                error: function() { alert("Có lỗi xảy ra, vui lòng thử lại!"); }
+            });
+        });
+
+        $('.carousel-container').slick({
+            slidesToShow: 4, slidesToScroll: 4, infinite: true, autoplay: true, autoplaySpeed: 3000, arrows: true,
+            prevArrow: '<button type="button" class="slick-prev"></button>',
+            nextArrow: '<button type="button" class="slick-next"></button>',
+            responsive: [
+                { breakpoint: 1024, settings: { slidesToShow: 3, slidesToScroll: 3 } },
+                { breakpoint: 768, settings: { slidesToShow: 2, slidesToScroll: 2 } },
+                { breakpoint: 480, settings: { slidesToShow: 1, slidesToScroll: 1 } }
+            ]
+        });
+        let slideIndex = 1; showSlides(slideIndex);
+        window.plusSlides = function(n) { showSlides(slideIndex += n); }
+        window.currentSlide = function(n) { showSlides(slideIndex = n); }
+        function showSlides(n) {
+            let i; let slides = document.getElementsByClassName("mySlides"); let dots = document.getElementsByClassName("dot");
+            if (n > slides.length) slideIndex = 1; if (n < 1) slideIndex = slides.length;
+            for (i = 0; i < slides.length; i++) slides[i].style.display = "none";
+            for (i = 0; i < dots.length; i++) dots[i].className = dots[i].className.replace(" active", "");
+            slides[slideIndex - 1].style.display = "block"; dots[slideIndex - 1].className += " active";
+        }
+
+        // === 2. LOGIC CHATBOT (QUAN TRỌNG) ===
+        const CHAT_PROCESS_URL = 'ajax_chat_process.php';   
+        const GET_MESSAGES_URL = 'ajax.get_messages.php';   
+        const POLL_INTERVAL = 3000;                         
+
+        var chatPollInterval = null;
+        var isChatOpen = false;
+
+        const $chatWindow = $('#chat-window');
+        const $chatBody = $('#chat-body');
+        const $chatInput = $('#chat-input');
+        const $typingIndicator = $('#typing-indicator');
+
+        // Mở chat (Click vào bubble)
+        $('#chat-bubble').click(function() {
+            $(this).fadeOut(200);
+            $chatWindow.css('display', 'flex').hide().fadeIn(300);
+            isChatOpen = true;
+            loadChatMessages(); 
+            scrollToBottom();
+        });
+
+        // Đóng chat
+        $('#close-chat').click(function() {
+            $chatWindow.fadeOut(300);
+            $('#chat-bubble').fadeIn(300);
+            isChatOpen = false;
+            stopPolling(); 
+        });
+
+        // Gửi tin
+        $('#send-btn').click(function() { sendMessage(); });
+        $chatInput.keypress(function(e) { if (e.which == 13) { sendMessage(); } });
+
+        function sendMessage() {
+            var msg = $chatInput.val().trim();
+            if (msg === '') return;
+
+            appendMessage(msg, 'user');
+            $chatInput.val('');
+            $typingIndicator.show();
+            scrollToBottom();
+
+            $.ajax({
+                url: CHAT_PROCESS_URL,
+                method: 'POST',
+                dataType: 'json',
+                data: { message: msg },
+                success: function(response) {
+                    $typingIndicator.hide();
+                    if (response.reply) { appendMessage(response.reply, 'bot'); }
+                    if (response.status === 'waiting' || response.conversation_status === 'human_requested') { startPolling(); }
+                    scrollToBottom();
+                },
+                error: function(xhr, status, error) {
+                    $typingIndicator.hide();
+                    console.error("Lỗi:", error);
+                    // appendMessage("Lỗi kết nối server.", 'bot');
+                }
+            });
+        }
+
+        function loadChatMessages() {
+            $.ajax({
+                url: GET_MESSAGES_URL,
+                method: 'GET',
+                dataType: 'json',
+                success: function(data) {
+                    // Chuẩn hóa HTML class để khớp với CSS
+                    var fixedHtml = data.html
+                        .replace(/msg-row/g, '') 
+                        .replace(/msg-bubble/g, '')
+                        .replace(/msg-user/g, 'chat-message user')
+                        .replace(/msg-bot/g, 'chat-message bot');
+
+                    $chatBody.html(fixedHtml);
+                    scrollToBottom();
+
+                    if (data.status === 'in_progress' || data.status === 'human_requested') {
+                        startPolling();
+                    }
+                }
+            });
+        }
+
+        function startPolling() {
+            if (chatPollInterval) return;
+            chatPollInterval = setInterval(function() {
+                if (!isChatOpen) return;
+                $.ajax({
+                    url: GET_MESSAGES_URL,
+                    method: 'GET',
+                    dataType: 'json',
+                    success: function(data) {
+                        var fixedHtml = data.html
+                            .replace(/msg-row/g, '')
+                            .replace(/msg-bubble/g, '')
+                            .replace(/msg-user/g, 'chat-message user')
+                            .replace(/msg-bot/g, 'chat-message bot');
+
+                        var currentHtml = $chatBody.html();
+                        if (fixedHtml.length !== currentHtml.length) {
+                            $chatBody.html(fixedHtml);
+                            scrollToBottom();
+                        }
+                        if (data.status === 'closed' || data.status === 'bot') { stopPolling(); }
+                    }
+                });
+            }, POLL_INTERVAL);
+        }
+
+        function stopPolling() {
+            if (chatPollInterval) { clearInterval(chatPollInterval); chatPollInterval = null; }
+        }
+
+        function appendMessage(text, sender) {
+            var html = `<div class="chat-message ${sender}">${escapeHtml(text)}</div>`;
+            $chatBody.append(html);
+        }
+
+        function scrollToBottom() { $chatBody.scrollTop($chatBody[0].scrollHeight); }
+
+        function escapeHtml(text) {
+            if (!text) return "";
+            return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+        }
+    });
+    </script>
 </body>
-
 </html>

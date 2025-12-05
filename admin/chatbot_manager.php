@@ -1,37 +1,28 @@
 <?php
-// Phần code PHP xử lý logic giữ nguyên
+// Bắt đầu session
 session_start();
-
 require __DIR__ . '/../includes/db.php';
 
-if (file_exists(__DIR__ . '/../templates/adminheader.php')) {
-    include __DIR__ . '/../templates/adminheader.php';
-}
-
 if (!isset($pdo)) {
-    die("Lỗi: Không thể kết nối CSDL. Vui lòng kiểm tra file includes/db.php.");
+    die("Lỗi: Không thể kết nối CSDL.");
 }
 
-// === XỬ LÝ FORM SUBMIT (THÊM/XÓA) ===
-// ... (toàn bộ code PHP xử lý form của bạn vẫn giữ nguyên ở đây) ...
-// Thêm Intent mới
+// === 1. XỬ LÝ THÊM / XÓA DỮ LIỆU ===
 if (isset($_POST['add_intent'])) {
     $name = trim($_POST['intent_name']);
     if (!empty($name)) {
         try {
             $stmt = $pdo->prepare("INSERT INTO intents (name) VALUES (?)");
             $stmt->execute([$name]);
-        } catch (PDOException $e) { /* Bỏ qua lỗi trùng lặp */ }
+        } catch (PDOException $e) {}
     }
     header("Location: chatbot_manager.php"); exit;
 }
-// Thêm câu mẫu (Training Phrase)
 if (isset($_POST['add_phrase'])) {
     $stmt = $pdo->prepare("INSERT INTO training_phrases (intent_id, phrase_text) VALUES (?, ?)");
     $stmt->execute([$_POST['intent_id'], $_POST['phrase_text']]);
     header("Location: chatbot_manager.php"); exit;
 }
-// Thêm câu trả lời (Response)
 if (isset($_POST['add_response'])) {
     $stmt = $pdo->prepare("INSERT INTO responses (intent_id, response_text) VALUES (?, ?)");
     $stmt->execute([$_POST['intent_id'], $_POST['response_text']]);
@@ -39,321 +30,212 @@ if (isset($_POST['add_response'])) {
 }
 // Xóa
 if (isset($_GET['delete_phrase'])) {
-    $stmt = $pdo->prepare("DELETE FROM training_phrases WHERE id = ?");
-    $stmt->execute([$_GET['delete_phrase']]);
+    $pdo->prepare("DELETE FROM training_phrases WHERE id = ?")->execute([$_GET['delete_phrase']]);
     header("Location: chatbot_manager.php"); exit;
 }
 if (isset($_GET['delete_response'])) {
-    $stmt = $pdo->prepare("DELETE FROM responses WHERE id = ?");
-    $stmt->execute([$_GET['delete_response']]);
+    $pdo->prepare("DELETE FROM responses WHERE id = ?")->execute([$_GET['delete_response']]);
     header("Location: chatbot_manager.php"); exit;
 }
 if (isset($_GET['delete_intent'])) {
-    $stmt = $pdo->prepare("DELETE FROM intents WHERE id = ?");
-    $stmt->execute([$_GET['delete_intent']]);
+    $pdo->prepare("DELETE FROM intents WHERE id = ?")->execute([$_GET['delete_intent']]);
     header("Location: chatbot_manager.php"); exit;
 }
 
-
-// === LẤY DỮ LIỆU ĐỂ HIỂN THỊ ===
-$intentsStmt = $pdo->query("SELECT * FROM intents ORDER BY name");
-$intents = $intentsStmt->fetchAll();
+// === 2. LẤY DỮ LIỆU HIỂN THỊ ===
+$intents = $pdo->query("SELECT * FROM intents ORDER BY name")->fetchAll();
 
 $phrasesByIntent = [];
-if (!empty($intents)) {
-    $phrasesStmt = $pdo->query("SELECT * FROM training_phrases");
-    foreach ($phrasesStmt->fetchAll() as $phrase) {
-        $phrasesByIntent[$phrase['intent_id']][] = $phrase;
-    }
-}
-
-
 $responsesByIntent = [];
+
 if (!empty($intents)) {
-    $responsesStmt = $pdo->query("SELECT * FROM responses");
-    foreach ($responsesStmt->fetchAll() as $response) {
-        $responsesByIntent[$response['intent_id']][] = $response;
-    }
+    $phrases = $pdo->query("SELECT * FROM training_phrases")->fetchAll();
+    foreach ($phrases as $p) $phrasesByIntent[$p['intent_id']][] = $p;
+
+    $responses = $pdo->query("SELECT * FROM responses")->fetchAll();
+    foreach ($responses as $r) $responsesByIntent[$r['intent_id']][] = $r;
 }
+
+// === 3. [QUAN TRỌNG] LẤY CÂU HỎI BOT BÓ TAY TỪ LIVE CHAT ===
+// Dùng message_text cho đúng với DB của bạn
+$missedQuestions = [];
+try {
+    $sqlMissed = "SELECT DISTINCT m.message_text 
+                  FROM messages m 
+                  JOIN conversations c ON m.conversation_id = c.id 
+                  WHERE c.status = 'human_requested' AND m.sender = 'user' 
+                  ORDER BY m.created_at DESC LIMIT 10";
+    $missedQuestions = $pdo->query($sqlMissed)->fetchAll();
+} catch (Exception $e) { /* Bỏ qua nếu lỗi */ }
+if (file_exists(__DIR__ . '/../templates/adminheader.php')) {
+    include __DIR__ . '/../templates/adminheader.php';
+}
+
 ?>
+
 <!DOCTYPE html>
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
     <title>Quản lý Chatbot AI</title>
-    <!-- ================================================================ -->
-    <!-- ======================= CSS ĐÃ ĐƯỢC LÀM MỚI ====================== -->
-    <!-- ================================================================ -->
     <style>
-        :root {
-            --primary-color: #007bff;
-            --danger-color: #dc3545;
-            --success-color: #28a745;
-            --light-gray: #f8f9fa;
-            --border-color: #dee2e6;
-            --text-color: #212529;
-            --text-secondary: #6c757d;
-        }
-
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-            line-height: 1.6;
-            background-color: #f4f7f9;
-            color: var(--text-color);
-            margin: 0;
-            padding: 20px;
-        }
-
-        .container {
-            max-width: 1000px;
-            margin: auto;
-        }
-
-        h1 {
-            text-align: center;
-            color: #343a40;
-            margin-bottom: 30px;
-        }
-
-        .intent-block {
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            margin-bottom: 25px;
-            padding: 20px;
-            background: #fff;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
-            transition: box-shadow 0.3s ease;
-        }
-        .intent-block:hover {
-            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.08);
-        }
-
-        .intent-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-bottom: 1px solid var(--border-color);
-            padding-bottom: 15px;
-            margin-bottom: 15px;
-        }
+        :root { --primary: #007bff; --danger: #dc3545; --success: #28a745; --bg: #f4f7f9; }
+        body { font-family: sans-serif; background-color: var(--bg); padding: 20px; }
         
-        .intent-header h2 {
-            margin: 0;
-            color: var(--primary-color);
-            font-size: 1.5em;
-        }
+        .page-layout { display: flex; gap: 20px; align-items: flex-start; }
+        .main-col { flex: 3; }
+        .side-col { flex: 1; background: white; padding: 15px; border-radius: 8px; position: sticky; top: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
 
-        h3 {
-            font-size: 1.1em;
-            color: var(--text-secondary);
-            margin-top: 20px;
-            margin-bottom: 10px;
-        }
-
-        ul {
-            list-style: none;
-            padding-left: 0;
-        }
+        h1 { text-align: center; color: #333; margin-bottom: 20px; }
         
-        li {
-            background-color: var(--light-gray);
-            padding: 10px 15px;
-            border-radius: 5px;
-            margin-bottom: 8px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border: 1px solid var(--border-color);
-        }
+        .intent-block { background: #fff; border: 1px solid #ddd; border-radius: 8px; padding: 20px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .intent-header { display: flex; justify-content: space-between; border-bottom: 1px solid #eee; padding-bottom: 10px; margin-bottom: 15px; }
+        .intent-header h2 { margin: 0; color: var(--primary); font-size: 1.4em; }
 
-        .delete-btn {
-            color: var(--danger-color);
-            text-decoration: none;
-            font-size: 0.9em;
-            border: 1px solid var(--danger-color);
-            padding: 3px 8px;
-            border-radius: 4px;
-            transition: all 0.2s ease;
-        }
-        .delete-btn:hover {
-            background: var(--danger-color);
-            color: white;
-        }
-
-        /* --- Cải tiến quan trọng nhất cho FORM --- */
-        form {
-            margin-top: 15px;
-        }
-
-        .form-group {
-            display: flex;
-            gap: 10px; /* Khoảng cách giữa ô input và nút bấm */
-        }
-
-        .form-group input[type="text"],
-        .form-group textarea {
-            flex-grow: 1; /* Cho phép ô input co giãn chiếm hết không gian */
-            padding: 10px;
-            border: 1px solid var(--border-color);
-            border-radius: 5px;
-            font-size: 1rem;
-        }
-        .form-group textarea {
-            resize: vertical;
-        }
-
-        button {
-            padding: 10px 20px;
-            cursor: pointer;
-            background-color: var(--primary-color);
-            color: white;
-            border: none;
-            border-radius: 5px;
-            font-size: 1rem;
-            transition: background-color 0.2s ease;
-        }
-        button:hover {
-            background-color: #0056b3;
-        }
-
-        .retrain-btn {
-            background-color: var(--success-color);
-            font-size: 1.2em;
-            padding: 15px;
-            margin-bottom: 25px;
-            width: 100%;
-            border-radius: 8px;
-        }
-        .retrain-btn:hover {
-            background-color: #218838;
-        }
+        ul { list-style: none; padding: 0; }
+        li { background: #f8f9fa; padding: 8px 12px; margin-bottom: 5px; border-radius: 4px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #eee; }
         
-        #retrain-status {
-            font-weight: bold;
-            text-align: center;
-            margin-top: -15px;
-            margin-bottom: 25px;
-            font-size: 1.1em;
-            height: 20px;
-        }
+        .btn { padding: 5px 10px; border: none; border-radius: 4px; cursor: pointer; color: white; text-decoration: none; font-size: 0.9em; }
+        .btn-del { background: var(--danger); font-size: 0.8em; }
+        .btn-add { background: var(--primary); padding: 10px 15px; }
+        
+        .retrain-section { text-align: center; margin-bottom: 30px; }
+        .btn-train { background: var(--success); font-size: 1.2em; padding: 12px 25px; border-radius: 25px; box-shadow: 0 4px 10px rgba(40, 167, 69, 0.3); transition: 0.3s; }
+        .btn-train:hover { transform: scale(1.05); }
 
-        .add-intent-block {
-            background-color: #e9ecef;
-            text-align: center;
-        }
-        .add-intent-block h2 {
-            color: #495057;
-            font-size: 1.3em;
-            margin-bottom: 15px;
-        }
+        form { display: flex; gap: 10px; margin-top: 10px; }
+        input[type="text"], textarea { flex: 1; padding: 10px; border: 1px solid #ccc; border-radius: 4px; }
+        
+        /* Sidebar Styles */
+        .suggestion-item { cursor: pointer; background: #fff3cd; color: #856404; border: 1px solid #ffeeba; margin-bottom: 8px; padding: 10px; border-radius: 5px; transition: 0.2s; }
+        .suggestion-item:hover { transform: translateX(-5px); background: #ffeeba; }
+        .hint-text { font-size: 0.9em; color: #666; font-style: italic; margin-bottom: 15px; }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>Quản lý Cơ sở Tri thức Chatbot</h1>
 
-        <button id="retrain-button" class="retrain-btn">🚀 Huấn luyện lại AI</button>
-        <p id="retrain-status"></p>
+<div class="container">
+    <h1>🧠 Trung tâm Huấn luyện Chatbot</h1>
 
-        <div class="intent-block add-intent-block">
-            <h2>Thêm Intent Mới</h2>
-            <form method="POST">
-                <div class="form-group">
-                    <input type="text" name="intent_name" placeholder="Ví dụ: #TRA_GOP, #KHUYEN_MAI,..." required>
-                    <button type="submit" name="add_intent">Thêm Intent</button>
-                </div>
-            </form>
-        </div>
-
-        <?php if (empty($intents)): ?>
-            <p style="text-align: center;">Chưa có dữ liệu. Hãy thêm Intent đầu tiên!</p>
-        <?php else: ?>
-            <?php foreach ($intents as $intent): ?>
-                <div class="intent-block">
-                    <div class="intent-header">
-                        <h2>Intent: <?= htmlspecialchars($intent['name']) ?></h2>
-                        <a href="?delete_intent=<?= $intent['id'] ?>" class="delete-btn" onclick="return confirm('CẢNH BÁO: Xóa intent này sẽ xóa toàn bộ câu mẫu và câu trả lời bên trong. Bạn có chắc không?')">Xóa Intent</a>
-                    </div>
-                    
-                    <!-- Phần Training Phrases -->
-                    <div>
-                        <h3>Câu mẫu (Training Phrases)</h3>
-                        <ul>
-                            <?php if (!empty($phrasesByIntent[$intent['id']])): ?>
-                                <?php foreach ($phrasesByIntent[$intent['id']] as $phrase): ?>
-                                    <li>
-                                        <span><?= htmlspecialchars($phrase['phrase_text']) ?></span>
-                                        <a href="?delete_phrase=<?= $phrase['id'] ?>" class="delete-btn">Xóa</a>
-                                    </li>
-                                <?php endforeach; ?>
-                            <?php else: ?>
-                                <li style="color: #888; font-style: italic;">Chưa có câu mẫu nào.</li>
-                            <?php endif; ?>
-                        </ul>
-                        <form method="POST">
-                            <input type="hidden" name="intent_id" value="<?= $intent['id'] ?>">
-                            <!-- Đã thêm class 'form-group' để CSS hoạt động -->
-                            <div class="form-group">
-                                <input type="text" name="phrase_text" placeholder="Thêm câu mẫu mới (VD: Mua trả góp được không)" required>
-                                <button type="submit" name="add_phrase">Thêm</button>
-                            </div>
-                        </form>
-                    </div>
-
-                    <!-- Phần Responses -->
-                    <div style="margin-top: 30px;">
-                        <h3>Câu trả lời của Bot (Responses)</h3>
-                        <ul>
-                             <?php if (!empty($responsesByIntent[$intent['id']])): ?>
-                                <?php foreach ($responsesByIntent[$intent['id']] as $response): ?>
-                                    <li>
-                                        <span><?= htmlspecialchars($response['response_text']) ?></span>
-                                        <a href="?delete_response=<?= $response['id'] ?>" class="delete-btn">Xóa</a>
-                                    </li>
-                                <?php endforeach; ?>
-                            <?php else: ?>
-                                 <li style="color: #888; font-style: italic;">Chưa có câu trả lời nào.</li>
-                            <?php endif; ?>
-                        </ul>
-                        <form method="POST">
-                            <input type="hidden" name="intent_id" value="<?= $intent['id'] ?>">
-                            <!-- Đã thêm class 'form-group' để CSS hoạt động -->
-                            <div class="form-group">
-                                <textarea name="response_text" placeholder="Thêm câu trả lời mới" required rows="2"></textarea>
-                                <button type="submit" name="add_response">Thêm</button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            <?php endforeach; ?>
-        <?php endif; ?>
+    <div class="retrain-section">
+        <button id="retrain-button" class="btn btn-train">🚀 Cập nhật Trí tuệ cho Bot</button>
+        <p id="retrain-status" style="margin-top: 10px; font-weight: bold; height: 20px;"></p>
     </div>
 
-    <script>
-        // Phần Javascript giữ nguyên
-        document.getElementById('retrain-button').addEventListener('click', function() {
-            const statusEl = document.getElementById('retrain-status');
-            statusEl.textContent = '⏳ Đang gửi yêu cầu huấn luyện đến AI service...';
-            statusEl.style.color = '#d39e00';
+    <div class="page-layout">
+        <!-- CỘT CHÍNH: QUẢN LÝ INTENT -->
+        <div class="main-col">
+            <!-- Form thêm Intent mới -->
+            <div class="intent-block" style="background: #e9ecef; text-align: center;">
+                <h3>Tạo chủ đề mới</h3>
+                <form method="POST">
+                    <input type="text" name="intent_name" placeholder="VD: #CHINH_SACH_BAO_HANH" required>
+                    <button type="submit" name="add_intent" class="btn btn-add">Tạo mới</button>
+                </form>
+            </div>
+
+            <?php if (empty($intents)): ?>
+                <p style="text-align: center;">Chưa có dữ liệu.</p>
+            <?php else: ?>
+                <?php foreach ($intents as $intent): ?>
+                    <div class="intent-block">
+                        <div class="intent-header">
+                            <h2><?= htmlspecialchars($intent['name']) ?></h2>
+                            <a href="?delete_intent=<?= $intent['id'] ?>" class="btn btn-del" onclick="return confirm('Xóa chủ đề này?')">Xóa</a>
+                        </div>
+
+                        <!-- Training Phrases -->
+                        <div>
+                            <strong>Khách hỏi:</strong>
+                            <ul>
+                                <?php if (!empty($phrasesByIntent[$intent['id']])): ?>
+                                    <?php foreach ($phrasesByIntent[$intent['id']] as $phrase): ?>
+                                        <li>
+                                            <?= htmlspecialchars($phrase['phrase_text']) ?>
+                                            <a href="?delete_phrase=<?= $phrase['id'] ?>" class="btn btn-del">X</a>
+                                        </li>
+                                    <?php endforeach; ?>
+                                <?php endif; ?>
+                            </ul>
+                            <form method="POST">
+                                <input type="hidden" name="intent_id" value="<?= $intent['id'] ?>">
+                                <input type="text" name="phrase_text" placeholder="Thêm câu hỏi mẫu..." required>
+                                <button type="submit" name="add_phrase" class="btn btn-add">Thêm</button>
+                            </form>
+                        </div>
+
+                        <!-- Responses -->
+                        <div style="margin-top: 20px; border-top: 1px dashed #ccc; padding-top: 15px;">
+                            <strong>Bot trả lời:</strong>
+                            <ul>
+                                <?php if (!empty($responsesByIntent[$intent['id']])): ?>
+                                    <?php foreach ($responsesByIntent[$intent['id']] as $res): ?>
+                                        <li style="background: #e2e6ea;">
+                                            <?= htmlspecialchars($res['response_text']) ?>
+                                            <a href="?delete_response=<?= $res['id'] ?>" class="btn btn-del">X</a>
+                                        </li>
+                                    <?php endforeach; ?>
+                                <?php endif; ?>
+                            </ul>
+                            <form method="POST">
+                                <input type="hidden" name="intent_id" value="<?= $intent['id'] ?>">
+                                <textarea name="response_text" placeholder="Nhập câu trả lời..." required rows="1"></textarea>
+                                <button type="submit" name="add_response" class="btn btn-add">Thêm</button>
+                            </form>
+                        </div>
+                    </div>
+                <?php endforeach; ?>
+            <?php endif; ?>
+        </div>
+
+        <!-- CỘT PHỤ: GỢI Ý TỪ LIVE CHAT -->
+        <div class="side-col">
+            <h3 style="color: #dc3545; margin-top: 0;">🔥 Cần dạy ngay</h3>
+            <p class="hint-text">Những câu hỏi khách hàng mà Bot không hiểu (đã chuyển nhân viên):</p>
             
-            fetch('http://127.0.0.1:5000/retrain', { method: 'POST' })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.status === 'success') {
-                        statusEl.textContent = '✅ Huấn luyện thành công! Chatbot đã được cập nhật.';
-                        statusEl.style.color = 'green';
-                        setTimeout(() => { statusEl.textContent = ''; }, 4000);
-                    } else {
-                        statusEl.textContent = '❌ Huấn luyện thất bại: ' + data.message;
-                        statusEl.style.color = 'red';
-                    }
-                })
-                .catch(error => {
-                    statusEl.textContent = '❌ Lỗi: Không kết nối được với Python AI (Port 5000). Hãy kiểm tra xem file api.py có đang chạy không.';
-                    statusEl.style.color = 'red';
-                    console.error('Error:', error);
-                });
+            <?php if(empty($missedQuestions)): ?>
+                <p style="color: green;">Bot đang làm tốt!</p>
+            <?php else: ?>
+                <?php foreach($missedQuestions as $q): ?>
+                    <div class="suggestion-item" onclick="copyText('<?= htmlspecialchars(addslashes($q['message_text'])) ?>')">
+                        <?= htmlspecialchars($q['message_text']) ?>
+                        <div style="font-size: 11px; color: #666; margin-top: 5px;">(Bấm để copy)</div>
+                    </div>
+                <?php endforeach; ?>
+            <?php endif; ?>
+        </div>
+    </div>
+</div>
+
+<script>
+    function copyText(text) {
+        navigator.clipboard.writeText(text).then(() => {
+            alert("Đã copy: " + text + "\nBây giờ hãy Paste vào ô 'Thêm câu hỏi mẫu' ở chủ đề phù hợp.");
         });
-    </script>
+    }
+
+    document.getElementById('retrain-button').addEventListener('click', function() {
+        const statusEl = document.getElementById('retrain-status');
+        statusEl.textContent = '⏳ Đang gửi dữ liệu sang Python...';
+        statusEl.style.color = '#d39e00';
+        
+        fetch('http://127.0.0.1:5000/retrain', { method: 'POST' })
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    statusEl.textContent = '✅ Thành công! Bot đã học được kiến thức mới.';
+                    statusEl.style.color = 'green';
+                } else {
+                    statusEl.textContent = '❌ Lỗi: ' + data.message;
+                    statusEl.style.color = 'red';
+                }
+            })
+            .catch(err => {
+                statusEl.textContent = '❌ Lỗi kết nối đến server Python (api.py).';
+                statusEl.style.color = 'red';
+            });
+    });
+</script>
+
 </body>
 </html>

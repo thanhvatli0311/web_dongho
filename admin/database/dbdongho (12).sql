@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Máy chủ: 127.0.0.1
--- Thời gian đã tạo: Th10 20, 2025 lúc 02:29 PM
+-- Thời gian đã tạo: Th12 05, 2025 lúc 06:53 AM
 -- Phiên bản máy phục vụ: 10.4.32-MariaDB
 -- Phiên bản PHP: 8.1.25
 
@@ -40,11 +40,37 @@ CREATE TABLE `conversations` (
 --
 
 INSERT INTO `conversations` (`id`, `user_identifier`, `status`, `created_at`, `updated_at`) VALUES
-(1, 'gk2839suaqso2cf36k2l4p5rjg', 'in_progress', '2025-11-12 12:31:54', '2025-11-12 13:00:36'),
-(2, 'vsadm2vvjhplu445lna7chhdei', 'in_progress', '2025-11-12 12:47:47', '2025-11-12 12:55:59'),
+(1, 'gk2839suaqso2cf36k2l4p5rjg', 'bot', '2025-11-12 12:31:54', '2025-12-04 04:03:08'),
+(2, 'vsadm2vvjhplu445lna7chhdei', 'bot', '2025-11-12 12:47:47', '2025-12-04 04:03:08'),
 (3, 'o8d9289m42gaqn8dordi1l3b6o', 'bot', '2025-11-14 02:46:50', '2025-11-14 02:46:50'),
 (4, 'o8d9289m42gaqn8dordi1l3b6o', 'bot', '2025-11-14 02:48:44', '2025-11-14 02:48:44'),
-(5, '07j5nfeluli8a47g0ru86if1ng', 'bot', '2025-11-20 08:36:04', '2025-11-20 08:36:04');
+(5, '07j5nfeluli8a47g0ru86if1ng', 'bot', '2025-11-20 08:36:04', '2025-11-20 08:36:04'),
+(6, 'lgl2nh8rhoffiekh0g78mund5v', 'bot', '2025-12-04 02:26:41', '2025-12-04 02:26:41'),
+(7, 'po9fdn8j2dkj8qtl8c24ojgado', 'in_progress', '2025-12-04 02:39:59', '2025-12-04 04:16:07'),
+(8, 'mu3132uv25j4fdh7k3nqjrq1nm', 'in_progress', '2025-12-04 04:16:46', '2025-12-04 04:23:59'),
+(9, 't2c7otto9bl360ku0gr99srk3g', 'bot', '2025-12-04 04:24:33', '2025-12-04 04:24:33'),
+(10, '0asulm8hjv7c21ud86hmhu9rff', 'bot', '2025-12-04 04:30:18', '2025-12-04 04:31:17');
+
+-- --------------------------------------------------------
+
+--
+-- Cấu trúc bảng cho bảng `customer_leads`
+--
+
+CREATE TABLE `customer_leads` (
+  `id` int(11) NOT NULL,
+  `user_identifier` varchar(255) NOT NULL,
+  `phone_number` varchar(20) NOT NULL,
+  `message_content` text DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Đang đổ dữ liệu cho bảng `customer_leads`
+--
+
+INSERT INTO `customer_leads` (`id`, `user_identifier`, `phone_number`, `message_content`, `created_at`) VALUES
+(1, '0asulm8hjv7c21ud86hmhu9rff', '0944745991', '0944745991', '2025-12-04 04:31:17');
 
 -- --------------------------------------------------------
 
@@ -68,7 +94,9 @@ INSERT INTO `intents` (`id`, `name`) VALUES
 (4, '#GIA_CA'),
 (6, '#THANH_TOAN'),
 (5, '#THONG_TIN_SP'),
-(3, '#VAN_CHUYEN');
+(9, '#TU_VAN'),
+(3, '#VAN_CHUYEN'),
+(8, '#VO_VAN');
 
 -- --------------------------------------------------------
 
@@ -111,7 +139,53 @@ INSERT INTO `messages` (`id`, `conversation_id`, `sender`, `message_text`, `crea
 (20, 4, 'user', 'alo', '2025-11-14 02:48:48'),
 (21, 4, 'bot', 'Chào bạn! Bạn cần tư vấn về sản phẩm, giá cả, hay chính sách mua hàng?', '2025-11-14 02:48:49'),
 (22, 5, 'user', 'hi', '2025-11-20 08:36:04'),
-(23, 5, 'bot', 'Chào bạn! Bạn cần tư vấn về sản phẩm, giá cả, hay chính sách mua hàng?', '2025-11-20 08:36:04');
+(23, 5, 'bot', 'Chào bạn! Bạn cần tư vấn về sản phẩm, giá cả, hay chính sách mua hàng?', '2025-11-20 08:36:04'),
+(24, 7, 'user', 'hh', '2025-12-04 02:51:03'),
+(25, 7, 'bot', 'Em chưa hiểu rõ ý của anh/chị lắm. Em đã chuyển cuộc hội thoại cho nhân viên tư vấn. Anh/chị vui lòng đợi trong giây lát nhé!', '2025-12-04 02:51:03'),
+(26, 7, 'admin', '👋', '2025-12-04 02:59:12'),
+(27, 7, 'user', 'hh', '2025-12-04 03:09:24'),
+(28, 7, 'user', 'a', '2025-12-04 03:09:43'),
+(29, 7, 'admin', 'd', '2025-12-04 03:11:03'),
+(30, 7, 'user', 'lô', '2025-12-04 03:14:38'),
+(31, 7, 'user', 't', '2025-12-04 03:19:38'),
+(32, 7, 'user', 'hi', '2025-12-04 03:45:48'),
+(33, 7, 'admin', 'hi', '2025-12-04 03:46:28'),
+(34, 7, 'user', 'hi', '2025-12-04 04:05:58'),
+(35, 7, 'bot', 'Em chưa hiểu rõ ý của anh/chị lắm. Em đã chuyển cuộc hội thoại cho nhân viên tư vấn. Anh/chị vui lòng đợi trong giây lát nhé!', '2025-12-04 04:06:00'),
+(36, 7, 'user', 'hi', '2025-12-04 04:10:42'),
+(37, 7, 'user', 'hi', '2025-12-04 04:11:01'),
+(38, 7, 'user', 'hh', '2025-12-04 04:16:07'),
+(39, 8, 'user', 'xin chào', '2025-12-04 04:16:46'),
+(40, 8, 'bot', 'Chào bạn! Bạn cần tư vấn về sản phẩm, giá cả, hay chính sách mua hàng?', '2025-12-04 04:16:46'),
+(41, 8, 'user', 'tôi muốn được biết về đông hồ patek philippe', '2025-12-04 04:17:39'),
+(42, 8, 'bot', 'Bạn có thể xem chi tiết giá và thông tin sản phẩm trên trang web của chúng tôi, hoặc cho tôi biết mã sản phẩm bạn quan tâm nhé.', '2025-12-04 04:17:39'),
+(43, 8, 'user', 'mã mh001', '2025-12-04 04:18:00'),
+(44, 8, 'bot', 'Mức giá cho các mẫu đồng hồ của chúng tôi rất đa dạng. Bạn có thể cho biết ngân sách của mình (ví dụ: dưới 10 triệu) hoặc thương hiệu bạn quan tâm không?', '2025-12-04 04:18:00'),
+(45, 8, 'user', 'hh', '2025-12-04 04:18:46'),
+(46, 8, 'bot', 'Dạ anh chị có thể cho em biết mình đang cần hỗ trợ gì không ạ?', '2025-12-04 04:18:46'),
+(47, 8, 'user', 'u', '2025-12-04 04:18:51'),
+(48, 8, 'bot', 'Chào bạn, tôi là trợ lý ảo. Tôi có thể giúp gì cho bạn?', '2025-12-04 04:18:51'),
+(49, 8, 'user', 'we', '2025-12-04 04:18:56'),
+(50, 8, 'bot', 'Chào bạn! Bạn cần tư vấn về sản phẩm, giá cả, hay chính sách mua hàng?', '2025-12-04 04:18:56'),
+(51, 8, 'user', 'ejejwjwej', '2025-12-04 04:19:04'),
+(52, 8, 'bot', 'Chào bạn, tôi là trợ lý ảo. Tôi có thể giúp gì cho bạn?', '2025-12-04 04:19:04'),
+(53, 8, 'user', 'tôi muốn gặp nhân viên', '2025-12-04 04:19:29'),
+(54, 8, 'bot', 'Chào bạn, tôi là trợ lý ảo. Tôi có thể giúp gì cho bạn?', '2025-12-04 04:19:29'),
+(55, 8, 'user', 'bao hanh', '2025-12-04 04:21:32'),
+(56, 8, 'bot', 'Chúng tôi miễn phí vận chuyển toàn quốc cho đơn hàng từ 1.000.000 VNĐ. Thời gian giao hàng dự kiến từ 2-4 ngày.', '2025-12-04 04:21:32'),
+(57, 8, 'user', 'um', '2025-12-04 04:22:27'),
+(58, 8, 'bot', 'Em chưa hiểu rõ ý của anh/chị lắm. Em đã chuyển cuộc hội thoại cho nhân viên tư vấn. Anh/chị vui lòng đợi trong giây lát nhé!', '2025-12-04 04:22:27'),
+(59, 8, 'user', 'hi', '2025-12-04 04:22:35'),
+(60, 8, 'user', 'xin', '2025-12-04 04:23:47'),
+(61, 8, 'user', 't', '2025-12-04 04:23:59'),
+(62, 9, 'user', 'hi', '2025-12-04 04:24:33'),
+(63, 9, 'bot', 'Chào bạn! Bạn cần tư vấn về sản phẩm, giá cả, hay chính sách mua hàng?', '2025-12-04 04:24:33'),
+(64, 10, 'user', 'tư vấn', '2025-12-04 04:30:18'),
+(65, 10, 'bot', 'Chào bạn! Bạn cần tư vấn về sản phẩm, giá cả, hay chính sách mua hàng?', '2025-12-04 04:30:19'),
+(66, 10, 'user', 'Tôi cần hỗ trợ gấp', '2025-12-04 04:31:03'),
+(67, 10, 'bot', 'Dạ, để được hỗ trợ tốt nhất, anh/chị vui lòng để lại Số Điện Thoại, chuyên viên sẽ gọi lại tư vấn ngay ạ!', '2025-12-04 04:31:03'),
+(68, 10, 'user', '0944745991', '2025-12-04 04:31:17'),
+(69, 10, 'bot', 'Em đã ghi nhận số điện thoại <b>0944745991</b>. Nhân viên cửa hàng sẽ liên hệ với anh/chị sớm nhất ạ! 🥰', '2025-12-04 04:31:17');
 
 -- --------------------------------------------------------
 
@@ -147,8 +221,9 @@ INSERT INTO `responses` (`id`, `intent_id`, `response_text`) VALUES
 (16, 5, 'Các thông số kỹ thuật như chất liệu, kích thước mặt số, loại máy (Automatic/Quartz) đều có trên trang sản phẩm. Bạn cần thông tin cụ thể nào?'),
 (17, 6, 'Chúng tôi chấp nhận thanh toán bằng Thẻ tín dụng/ATM, chuyển khoản ngân hàng, và thanh toán tiền mặt khi nhận hàng (COD).'),
 (18, 6, 'Bạn có thể thanh toán trả góp 0% qua thẻ tín dụng của một số ngân hàng đối tác. Bạn muốn tôi gửi thông tin chi tiết không?'),
-(19, 7, 'DBĐồng Hồ có nhiều chi nhánh. Cửa hàng flagship của chúng tôi ở 123 Lê Lợi, Quận 1, TP.HCM. Bạn ở khu vực nào để tôi tìm cửa hàng gần nhất?'),
-(20, 7, 'Bạn có thể xem danh sách tất cả các cửa hàng và giờ làm việc tại mục \"Hệ thống cửa hàng\" trên website.');
+(21, 8, 'Dạ anh chị có thể cho em biết mình đang cần hỗ trợ gì không ạ?'),
+(22, 9, 'Dạ, để được hỗ trợ tốt nhất, anh/chị vui lòng để lại Số Điện Thoại, chuyên viên sẽ gọi lại tư vấn ngay ạ!'),
+(23, 7, 'Cửa hàng đồng hồ TSP địa chỉ số 19 ngõ 39, đường Hồ Tùng Mậu, quận Cầu Giấy, Hà Nội');
 
 -- --------------------------------------------------------
 
@@ -169,37 +244,17 @@ CREATE TABLE `tbchitietdonhang` (
 --
 
 INSERT INTO `tbchitietdonhang` (`machitiet`, `madonhang`, `mahang`, `soluong`, `dongia`) VALUES
-('CTDH1761578399136001', 'DH17615783991346270', 'MH006', 1, 30780000000.000),
-('CTDH1761739645526400', 'DH17617396455222372', 'MH003', 2, 7200000000.000),
-('CTDH1761739709499600', 'DH17617397094983979', 'MH008', 1, 950000000.000),
-('CTDH1761755096840700', 'DH17617550968388334', 'MH006', 1, 30780000000.000),
-('CTDH1761957820495001', 'DH176195782049140', 'MH006', 1, 30780000000.000),
-('CTDH1762312718116500', 'DH17623127181086241', 'MH012', 1, 4500000000.000),
-('CTDH1762314001763001', 'DH17623140017615492', 'MH012', 1, 4500000000.000),
-('CTDH1762314001785900', 'DH17623140017615492', 'MH011', 2, 720000000.000),
-('CTDH1762314001799003', 'DH17623140017615492', 'MH001', 1, 1550000000.000),
-('CTDH1762314001803200', 'DH17623140017615492', 'MH003', 1, 7200000000.000),
-('CTDH1762324211638001', 'DH17623242116363342', 'MH006', 1, 30780000000.000),
-('CTDH1762324211639700', 'DH17623242116363342', 'MH004', 1, 2000000000.000),
-('CTDH1762354321523600', 'DH17623543215169344', 'MH004', 1, 2000000000.000),
-('CTDH1762354321529800', 'DH17623543215169344', 'MH015', 1, 1550000000.000),
-('CTDH1762354739925700', 'DH17623547399247412', 'MH004', 1, 2000000000.000),
-('CTDH1762355404261100', 'DH17623554042593198', 'MH007', 1, 490000000.000),
-('CTDH1762357142078100', 'DH17623571420764250', 'MH012', 1, 4500000000.000),
-('CTDH1762931177899001', 'DH17629311778976835', 'MH004', 1, 2000000000.000),
-('CTDH1763616585164500', 'DH17636165851623555', 'MH006', 1, 30780000000.000),
-('CTDH1763618518205800', 'DH17636185182037500', 'MH015', 1, 1550000000.000),
-('CTDH1763624830110700', 'DH17636248301075608', 'MH004', 1, 2000000000.000),
-('CTDH1763638843792400', 'DH17636388437911548', 'MH006', 1, 30780000000.000),
-('CTDH1763639827425700', 'DH17636398274238368', 'MH010', 1, 270000000.000),
-('CTDH1763640486724300', 'DH17636404867092284', 'MH007', 1, 490000000.000),
-('CTDH1763641197972600', 'DH17636411979676644', 'MH017', 1, 1390000000.000),
-('CTDH1763642503515100', 'DH17636425035136848', 'MH002', 1, 8900000.000),
-('CTDH1763643180808200', 'DH1763643180806270', 'MH009', 1, 500000000.000),
-('CTDH1763643730780200', 'DH17636437307783887', 'MH004', 1, 2000000000.000),
-('CTDH1763644258486400', 'DH17636442584855718', 'MH002', 1, 8900000.000),
-('CTDH1763645175910300', 'DH17636451759078525', 'MH003', 1, 7200000000.000),
-('CTDH1763645308823400', 'DH17636453088213229', 'MH011', 1, 720000000.000);
+('CTDH1763770937833800', 'DH17637709378309737', 'MH017', 1, 1390000000.000),
+('CTDH1763770937836400', 'DH17637709378309737', 'MH009', 1, 500000000.000),
+('CTDH176377093785003', 'DH17637709378309737', 'MH014', 1, 350000000.000),
+('CTDH1763770959553400', 'DH17637709595421342', 'MH003', 4, 72000000.000),
+('CTDH1763770991178600', 'DH17637709911733615', 'MH015', 1, 1550000000.000),
+('CTDH1763770991180300', 'DH17637709911733615', 'MH013', 1, 200000000.000),
+('CTDH1763770991204200', 'DH17637709911733615', 'MH012', 1, 4500000000.000),
+('CTDH1763771231372800', 'DH17637712313593348', 'MH005', 1, 1050000000.000),
+('CTDH1763771231385500', 'DH17637712313593348', 'MH013', 1, 200000000.000),
+('CTDH1763771245070100', 'DH17637712450674110', 'MH010', 1, 270000000.000),
+('CTDH1764378449937100', 'DH17643784499283141', 'MH005', 1, 1050000000.000);
 
 -- --------------------------------------------------------
 
@@ -226,32 +281,12 @@ CREATE TABLE `tbdonhang` (
 --
 
 INSERT INTO `tbdonhang` (`madonhang`, `makhach`, `ngaymua`, `tinhtrang`, `phuongthuctt`, `trangthaitt`, `mavandon`, `thoigian_capnhat`, `makhuyenmai`, `giatrigiam`, `tongtiendonhang`) VALUES
-('DH17615783991346270', 'KH20251027002', '2025-10-27 22:19:59', 'Đã giao', NULL, NULL, NULL, NULL, NULL, 0.00, 0.000),
-('DH17617396455222372', 'KH20251027001', '2025-10-29 19:07:25', 'Đang giao hàng', NULL, NULL, NULL, NULL, NULL, 0.00, 0.000),
-('DH17617397094983979', 'KH20251027002', '2025-10-29 19:08:29', 'Đang xử lý', NULL, NULL, NULL, NULL, NULL, 0.00, 0.000),
-('DH17617550968388334', 'KH20251027002', '2025-10-29 23:24:56', 'Đã giao', NULL, NULL, NULL, NULL, NULL, 0.00, 0.000),
-('DH176195782049140', 'KH20251027002', '2025-11-01 07:43:40', 'Đang xử lý', NULL, NULL, NULL, NULL, NULL, 0.00, 0.000),
-('DH17623127181086241', 'KH20251027002', '2025-11-05 10:18:38', 'Đang xử lý', NULL, NULL, NULL, NULL, NULL, 0.00, 0.000),
-('DH17623140017615492', 'KH20251027002', '2025-11-05 10:40:01', 'Đang xử lý', NULL, NULL, NULL, NULL, NULL, 0.00, 0.000),
-('DH17623242116363342', 'KH20251027002', '2025-11-05 13:30:11', 'Đã hủy', NULL, NULL, NULL, NULL, NULL, 0.00, 0.000),
-('DH17623543215169344', 'KH20251027002', '2025-11-05 21:52:01', 'Đã hủy', NULL, NULL, NULL, NULL, NULL, 0.00, 0.000),
-('DH17623547399247412', 'KH20251027002', '2025-11-05 21:58:59', 'Đã hủy', NULL, NULL, NULL, NULL, NULL, 0.00, 0.000),
-('DH17623554042593198', 'KH20251027002', '2025-11-05 22:10:04', 'Đang xử lý', NULL, NULL, NULL, NULL, NULL, 0.00, 0.000),
-('DH17623571420764250', 'KH20251030002', '2025-11-05 22:39:02', 'Đang giao hàng', NULL, NULL, NULL, NULL, NULL, 0.00, 0.000),
-('DH17629311778976835', 'KH20251030001', '2025-11-12 14:06:17', 'Đang xử lý', NULL, NULL, NULL, NULL, NULL, 0.00, 0.000),
-('DH17636165851623555', 'KH20251030001', '2025-11-20 12:29:45', 'Đã giao', NULL, NULL, NULL, NULL, NULL, 0.00, 0.000),
-('DH17636185182037500', 'KH20251030001', '2025-11-20 13:01:58', 'Đang xử lý', NULL, NULL, NULL, NULL, NULL, 0.00, 0.000),
-('DH17636248301075608', 'KH20251027002', '2025-11-20 14:47:10', 'Đang giao hàng', NULL, NULL, NULL, NULL, NULL, 0.00, 0.000),
-('DH17636388437911548', 'KH20251027002', '2025-11-20 18:40:43', 'Đang giao hàng', 'COD', 'Chưa thanh toán', NULL, NULL, NULL, 0.00, 30780000000.000),
-('DH17636398274238368', 'KH20251027002', '2025-11-20 18:57:07', 'Đang xử lý', 'BANK_TRANSFER', 'Chờ thanh toán', NULL, NULL, NULL, 0.00, 243000000.000),
-('DH17636404867092284', 'KH20251027002', '2025-11-20 19:08:06', 'Đang giao hàng', 'COD', 'Chưa thanh toán', NULL, NULL, NULL, 0.00, 441000000.000),
-('DH17636411979676644', 'KH20251027002', '2025-11-20 19:19:57', 'Đang xử lý', 'BANK_TRANSFER', 'Chờ thanh toán', NULL, NULL, NULL, 0.00, 1251000000.000),
-('DH17636425035136848', 'KH20251027002', '2025-11-20 19:41:43', 'Đang xử lý', 'COD', 'Chưa thanh toán', NULL, NULL, NULL, 0.00, 8010000.000),
-('DH1763643180806270', 'KH20251027002', '2025-11-20 19:53:00', 'Đang xử lý', 'BANK_TRANSFER', 'Chờ thanh toán', NULL, NULL, NULL, 0.00, 450000000.000),
-('DH17636437307783887', 'KH20251027002', '2025-11-20 20:02:10', 'Đang xử lý', 'COD', 'Chưa thanh toán', NULL, NULL, 'GIAMGIA20AHDSHAD', 0.00, 1800000000.000),
-('DH17636442584855718', 'KH20251027002', '2025-11-20 20:10:58', 'Đang xử lý', 'COD', 'Chưa thanh toán', NULL, NULL, 'GIAMGIA20AHDSHAD', 0.00, 8010000.000),
-('DH17636451759078525', 'KH20251027002', '2025-11-20 20:26:15', 'Đang xử lý', 'BANK_TRANSFER', 'Chờ thanh toán', NULL, NULL, NULL, 0.00, 7200000000.000),
-('DH17636453088213229', 'KH20251027002', '2025-11-20 20:28:28', 'Đang xử lý', 'BANK_TRANSFER', 'Chờ thanh toán', NULL, NULL, NULL, 0.00, 720000000.000);
+('DH17637709378309737', 'KH20251027002', '2025-11-22 07:22:17', 'Đang giao hàng', 'COD', 'Chưa thanh toán', NULL, NULL, 'aa', 0.00, 2217600000.000),
+('DH17637709595421342', 'KH20251027002', '2025-11-22 07:22:39', 'Đã giao', 'COD', 'Chưa thanh toán', NULL, NULL, NULL, 0.00, 288000000.000),
+('DH17637709911733615', 'KH20251027002', '2025-11-22 07:23:11', 'Đã giao', 'BANK_TRANSFER', 'Chờ thanh toán', NULL, NULL, 'GIAMGIA20AHDSHAD', 0.00, 5000000000.000),
+('DH17637712313593348', 'KH20251030001', '2025-11-22 07:27:11', 'Đang xử lý', 'BANK_TRANSFER', 'Chờ thanh toán', NULL, NULL, NULL, 0.00, 1250000000.000),
+('DH17637712450674110', 'KH20251030001', '2025-11-22 07:27:25', 'Đã hủy', 'COD', 'Chưa thanh toán', NULL, NULL, NULL, 0.00, 270000000.000),
+('DH17643784499283141', 'KH20251027002', '2025-11-29 08:07:29', 'Đang xử lý', 'BANK_TRANSFER', 'Chờ thanh toán', NULL, NULL, NULL, 0.00, 1050000000.000);
 
 -- --------------------------------------------------------
 
@@ -265,6 +300,19 @@ CREATE TABLE `tbgiohang_luu` (
   `soluong` int(11) NOT NULL,
   `checked` tinyint(1) DEFAULT 1 COMMENT 'Trạng thái được chọn thanh toán'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Đang đổ dữ liệu cho bảng `tbgiohang_luu`
+--
+
+INSERT INTO `tbgiohang_luu` (`makhach`, `mahang`, `soluong`, `checked`) VALUES
+('KH20251027002', 'MH013', 1, 1),
+('KH20251030001', 'MH002', 1, 0),
+('KH20251030001', 'MH003', 1, 0),
+('KH20251030001', 'MH004', 1, 1),
+('KH20251030001', 'MH008', 1, 0),
+('KH20251030001', 'MH017', 1, 0),
+('KH20251129001', 'MH007', 1, 1);
 
 -- --------------------------------------------------------
 
@@ -380,7 +428,9 @@ INSERT INTO `tbkhachhang` (`makhach`, `tenkhach`, `ngaysinh`, `sodienthoai`, `di
 ('KH20251027001', 'admin', '2011-11-11', '0944745991', 'Thôn 8 Phúc Sơn, Anh Sơn, Nghệ An', 'Nam', 'admin@gmail.com'),
 ('KH20251027002', 'Tâm', '2004-11-03', '0944745991', 'Thôn 8 Phúc Sơn, Anh Sơn, Nghệ An', 'Nam', 'nv1'),
 ('KH20251030001', 'Nguyễn Văn Tâm', '2011-11-11', '0944745991', 'Thôn 8 Phúc Sơn, Anh Sơn, Nghệ An', 'Nam', 'nv2'),
-('KH20251030002', 'Tam', '2011-11-11', '0944745991', 'số 19', 'Nam', 'nv3');
+('KH20251030002', 'Tam', '2011-11-11', '0944745991', 'số 19', 'Nam', 'nv3'),
+('KH20251121001', 'Nguyễn Văn Tâm Tâm', '1111-11-11', '0944745991', 'Thôn 8 Phúc Sơn, Anh Sơn, Nghệ An', 'Nam', 'nv4'),
+('KH20251129001', 'Nguyễn Văn Tâm Tâm', '1111-11-11', '0944745991', 'Thôn 8 Phúc Sơn, Anh Sơn, Nghệ An', 'Nam', '111');
 
 -- --------------------------------------------------------
 
@@ -404,7 +454,8 @@ CREATE TABLE `tbkhuyenmai` (
 --
 
 INSERT INTO `tbkhuyenmai` (`makhuyenmai`, `tenkhuyenmai`, `loai`, `giatri`, `dieukientoithieu`, `ngaybatdau`, `ngayketthuc`, `trangthai`) VALUES
-('GIAMGIA20AHDSHAD', '', 'PHAN_TRAM', 20.00, 0.00, '2025-11-20 06:58:00', '2025-11-27 06:58:00', 1);
+('AA', '', 'PHAN_TRAM', 1.00, 0.00, '2025-11-21 16:52:00', '2025-11-28 16:52:00', 1),
+('GIAMGIA20AHDSHAD', '', 'PHAN_TRAM', 20.00, 0.00, '2025-11-20 06:58:00', '2025-11-22 06:58:00', 1);
 
 -- --------------------------------------------------------
 
@@ -428,12 +479,12 @@ CREATE TABLE `tbmathang` (
 --
 
 INSERT INTO `tbmathang` (`mahang`, `tenhang`, `mota`, `dongia`, `nguongoc`, `thuonghieu`, `hinhanh`, `conhang`) VALUES
-('MH001', 'Đồng hồ Patek Philippe Complications 5205R-010', 'Patek Philippe 5205R-010 là chiếc đồng hồ lịch hàng năm (Annual Calendar) mang phong cách thanh lịch và đẳng cấp, kết hợp hoàn hảo giữa kỹ thuật chế tác tinh xảo và thẩm mỹ sang trọng. Với vỏ vàng hồng 18K, mặt số đen sunburst, và chức năng moonphase, đây là biểu tượng của sự tinh tế trong dòng Complications của thương hiệu Thụy Sĩ danh tiếng.\r\n\r\nThông số sản phẩm\r\nThương hiệu:	Patek Philippe\r\nXuất xứ:	Thụy Sĩ\r\nĐối tượng:	Nam\r\nChống nước:	30m (3ATM)\r\nLoại mặt số:	Cơ tự động (Automatic)\r\nLoại máy:	Calibre 324 S QA LU 24H/206\r\nChất liệu kính:	Sapphire chống trầy xước\r\nChất liệu dây:	Da cá sấu cao cấp\r\nSize mặt:	40 mm\r\nĐộ dày:	11.36 mm\r\nMàu mặt:	Đen sunburst\r\nSeries:	Complications\r\nĐường kính mặt:	40 mm\r\nMàu vỏ:	Vàng hồng 18K\r\nHình dáng mặt:	Mặt tròn\r\nBộ sưu tập:	Complications Annual Calendar\r\nTiện ích:	Lịch thứ – ngày – tháng, Moonphase, hiển thị 24 giờ, tự động lên cót, nắp lưng trong suốt', 1550000000.000, 'Thụy Sĩ', 'Patek Philippe', 'patek-philippe-complications-5205r-010.png', 'Hết hàng'),
+('MH001', 'Đồng hồ Patek Philippe Complications 5205R-010', 'Patek Philippe 5205R-010 là chiếc đồng hồ lịch hàng năm (Annual Calendar) mang phong cách thanh lịch và đẳng cấp, kết hợp hoàn hảo giữa kỹ thuật chế tác tinh xảo và thẩm mỹ sang trọng. Với vỏ vàng hồng 18K, mặt số đen sunburst, và chức năng moonphase, đây là biểu tượng của sự tinh tế trong dòng Complications của thương hiệu Thụy Sĩ danh tiếng.\r\n\r\nThông số sản phẩm\r\nThương hiệu:	Patek Philippe\r\nXuất xứ:	Thụy Sĩ\r\nĐối tượng:	Nam\r\nChống nước:	30m (3ATM)\r\nLoại mặt số:	Cơ tự động (Automatic)\r\nLoại máy:	Calibre 324 S QA LU 24H/206\r\nChất liệu kính:	Sapphire chống trầy xước\r\nChất liệu dây:	Da cá sấu cao cấp\r\nSize mặt:	40 mm\r\nĐộ dày:	11.36 mm\r\nMàu mặt:	Đen sunburst\r\nSeries:	Complications\r\nĐường kính mặt:	40 mm\r\nMàu vỏ:	Vàng hồng 18K\r\nHình dáng mặt:	Mặt tròn\r\nBộ sưu tập:	Complications Annual Calendar\r\nTiện ích:	Lịch thứ – ngày – tháng, Moonphase, hiển thị 24 giờ, tự động lên cót, nắp lưng trong suốt', 15500000.000, 'Thụy Sĩ', 'Patek Philippe', 'patek-philippe-complications-5205r-010.png', 'Hết hàng'),
 ('MH002', 'Đồng Hồ Nữ Patek Philippe Twenty~4 7300/1200A-011 Màu Bạc Xanh', 'Chiếc Twenty~4 7300/1200A-011 là sự kết hợp tinh tế giữa nét hiện đại và sang trọng dành cho nữ giới: vỏ bằng thép không gỉ, mặt số xanh (olive sunburst) bắt mắt, và viền bezel đính kim cương – thể hiện đẳng cấp từ thương hiệu Thụy Sĩ danh tiếng.\r\n\r\nThông số sản phẩm\r\nThương hiệu:	Patek Philippe\r\nXuất xứ:	Thụy Sĩ\r\nĐối tượng:	Nữ\r\nChống nước:	30 m (3 ATM) \r\nLoại mặt số:	Cơ tự động (Automatic)\r\nLoại máy:	Calibre 26-330 S C – tự lên cót, hiển thị ngày tại vị trí 6 giờ \r\nChấtiệu kính:	Sapphire chống trầy xước, mặt đáy trong suốt\r\nChất liệu dây:	Thép không gỉ (Steel) bọc toàn bộ, khoá gập đặc biệt\r\nSize mặt:	36 mm đường kính \r\nĐộ dày:	10.05 mm \r\n\r\nMàu mặt:	Xanh olive (sunburst)\r\n\r\nSeries:	Twenty~4 Automatic\r\nĐường kính mặt:	36 mm (như “Size mặt”)\r\nMàu vỏ:	Bạc – Thép không gỉ đánh bóng\r\nHình dáng mặt:	Mặt tròn\r\nBộ sưu tập:	Twenty~4 – dành cho nữ giới hiện đại \r\n\r\nTiện ích:	Hiển thị giờ – phút – giây, cửa sổ ngày ngày (date) tại 6 giờ; vỏ đính kim cương (160 viên trên vành bezel)', 8900000.000, 'Thụy Sĩ', 'Patek Philippe', 'dong-ho-nu-patek-philippe-twenty-4-7300-1200a-011-mau-bac-xanh-66389f060f7f3-06052024161238.webp', 'Còn hàng'),
-('MH003', 'Đồng Hồ Patek Philippe Nautilus 5711/1A-014 Olive Green Màu Bạc Xanh', 'Chiếc Nautilus 5711/1A-014 là phiên bản giới hạn nổi bật với mặt số màu xanh olive sunburst hiếm có, được xem là “lời tạm biệt” sang trọng của Patek Philippe cho dòng 5711 bằng thép huyền thoại. Mẫu đồng hồ kết hợp hoàn hảo giữa phong cách thể thao thanh lịch, độ hoàn thiện tinh xảo và giá trị sưu tầm cao.\r\n\r\nThông số sản phẩm\r\nThương hiệu:	Patek Philippe\r\nXuất xứ:	Thụy Sĩ\r\nĐối tượng:	Nam / Unisex\r\nChống nước:	120m (12 ATM)\r\nLoại mặt số:	Cơ tự động (Automatic)\r\nLoại máy:	Calibre 26-330 S C\r\nChất liệu kính:	Sapphire chống trầy xước (trước và sau)\r\nChất liệu dây:	Thép không gỉ\r\nSize mặt:	40 mm\r\nĐộ dày:	8.3 mm\r\nMàu mặt:	Xanh olive (sunburst)\r\nSeries:	Nautilus\r\nĐường kính mặt:	40 mm\r\nMàu vỏ:	Bạc – Thép không gỉ\r\nHình dáng mặt:	Mặt tròn đặc trưng Nautilus\r\nBộ sưu tập:	Nautilus Automatic\r\nTiện ích:	Giờ – Phút – Giây trung tâm, Lịch ngày tại vị trí 3 giờ', 7200000000.000, 'Thụy Sĩ', 'Patek Philippe', 'dong-ho-patek-philippe-nautilus-5711-1a-014-olive-green-mau-bac-xanh-663314fc72da2-02052024112220.webp', 'Còn hàng'),
-('MH004', 'Đồng Hồ Nam Patek Philippe Complications 5905R-010 Màu Xanh/ Vàng Hồng', 'Đồng Hồ Nam Patek Philippe Complications 5905R-010 Màu Xanh/ Vàng Hồng là chiếc đồng hồ cao cấp đến từ thương hiệu Patek Philippe nổi tiếng Thụy Sỹ. Chiếc đồng hồ Patek Philippe 5905R-010 được trang bị chức năng cao cấp và mang đến vẻ đẹp sang trọng cho người dùng. \r\nThiết Kế Đồng Hồ Nam Patek Philippe Complications 5905R-010 Màu Xanh/ Vàng Hồng\r\nĐồng hồ Patek Philippe Complications 5905R-010 sở hữu vỏ vàng nguyên khối có kích thước 42mm, không quá lớn, rất vừa vặn với nhiều dáng cổ tay của nam giới. Giống như mẫu đã có từ trước, cỗ máy Patek Philippe Complications 5905R-010 vẫn giữ chức năng là lịch thường niên kết hợp với chronograph trong 60 phút. Các vạch chia rõ ràng trên mặt số khiến cho đồng hồ có vẻ đẹp chặt chẽ và đối xứng, rất dễ để theo dõi các chỉ số. \r\n\r\nĐồng Hồ Nam Patek Philippe Complications 5905R-010 Màu Xanh/ Vàng Hồng\r\n\r\nPhiên bản Patek Philippe Complications 5905R-010 có mặt số màu xanh kèm bề mặt dạng chải tia đem đến cái nhìn hiện đại và thanh lịch. Vỏ với cấu trúc đặc biệt tinh xảo đã được điểm xuyết thêm vẻ ấn tượng với vành bezel hơi lõm. \r\n\r\nĐồng Hồ Nam Patek Philippe Complications 5905R-010 Màu Xanh/ Vàng Hồng\r\n\r\nPatek Philippe Complications 5905R-010 sử dụng bộ máy cơ tự động Patek Philippe Caliber CH 28-520 IRM QA 24H, với độ chính xác tương đối cao.', 2000000000.000, 'Thụy Sĩ', 'Patek Philippe', 'dong-ho-nam-patek-philippe-complications-5905r-010-mau-xanh-vang-hong-66680222a8c3a-11062024145202.webp', 'Còn hàng'),
+('MH003', 'Đồng Hồ Patek Philippe Nautilus 5711/1A-014 Olive Green Màu Bạc Xanh', 'Chiếc Nautilus 5711/1A-014 là phiên bản giới hạn nổi bật với mặt số màu xanh olive sunburst hiếm có, được xem là “lời tạm biệt” sang trọng của Patek Philippe cho dòng 5711 bằng thép huyền thoại. Mẫu đồng hồ kết hợp hoàn hảo giữa phong cách thể thao thanh lịch, độ hoàn thiện tinh xảo và giá trị sưu tầm cao.\r\n\r\nThông số sản phẩm\r\nThương hiệu:	Patek Philippe\r\nXuất xứ:	Thụy Sĩ\r\nĐối tượng:	Nam / Unisex\r\nChống nước:	120m (12 ATM)\r\nLoại mặt số:	Cơ tự động (Automatic)\r\nLoại máy:	Calibre 26-330 S C\r\nChất liệu kính:	Sapphire chống trầy xước (trước và sau)\r\nChất liệu dây:	Thép không gỉ\r\nSize mặt:	40 mm\r\nĐộ dày:	8.3 mm\r\nMàu mặt:	Xanh olive (sunburst)\r\nSeries:	Nautilus\r\nĐường kính mặt:	40 mm\r\nMàu vỏ:	Bạc – Thép không gỉ\r\nHình dáng mặt:	Mặt tròn đặc trưng Nautilus\r\nBộ sưu tập:	Nautilus Automatic\r\nTiện ích:	Giờ – Phút – Giây trung tâm, Lịch ngày tại vị trí 3 giờ', 72000000.000, 'Thụy Sĩ', 'Patek Philippe', 'dong-ho-patek-philippe-nautilus-5711-1a-014-olive-green-mau-bac-xanh-663314fc72da2-02052024112220.webp', 'Còn hàng'),
+('MH004', 'Đồng Hồ Nam Patek Philippe Complications 5905R-010 Màu Xanh/ Vàng Hồng', 'Đồng Hồ Nam Patek Philippe Complications 5905R-010 Màu Xanh/ Vàng Hồng là chiếc đồng hồ cao cấp đến từ thương hiệu Patek Philippe nổi tiếng Thụy Sỹ. Chiếc đồng hồ Patek Philippe 5905R-010 được trang bị chức năng cao cấp và mang đến vẻ đẹp sang trọng cho người dùng. \r\nThiết Kế Đồng Hồ Nam Patek Philippe Complications 5905R-010 Màu Xanh/ Vàng Hồng\r\nĐồng hồ Patek Philippe Complications 5905R-010 sở hữu vỏ vàng nguyên khối có kích thước 42mm, không quá lớn, rất vừa vặn với nhiều dáng cổ tay của nam giới. Giống như mẫu đã có từ trước, cỗ máy Patek Philippe Complications 5905R-010 vẫn giữ chức năng là lịch thường niên kết hợp với chronograph trong 60 phút. Các vạch chia rõ ràng trên mặt số khiến cho đồng hồ có vẻ đẹp chặt chẽ và đối xứng, rất dễ để theo dõi các chỉ số. \r\n\r\nĐồng Hồ Nam Patek Philippe Complications 5905R-010 Màu Xanh/ Vàng Hồng\r\n\r\nPhiên bản Patek Philippe Complications 5905R-010 có mặt số màu xanh kèm bề mặt dạng chải tia đem đến cái nhìn hiện đại và thanh lịch. Vỏ với cấu trúc đặc biệt tinh xảo đã được điểm xuyết thêm vẻ ấn tượng với vành bezel hơi lõm. \r\n\r\nĐồng Hồ Nam Patek Philippe Complications 5905R-010 Màu Xanh/ Vàng Hồng\r\n\r\nPatek Philippe Complications 5905R-010 sử dụng bộ máy cơ tự động Patek Philippe Caliber CH 28-520 IRM QA 24H, với độ chính xác tương đối cao.', 20000000.000, 'Thụy Sĩ', 'Patek Philippe', 'dong-ho-nam-patek-philippe-complications-5905r-010-mau-xanh-vang-hong-66680222a8c3a-11062024145202.webp', 'Còn hàng'),
 ('MH005', 'Đồng Hồ Nữ Patek Philippe Gondo Serata 4962/200R-001 Màu Nâu Vàng', 'Đồng Hồ Nữ Patek Philippe Gondo Serata 4962/200R-001 Màu Nâu Vàng là chiếc đồng hồ cao cấp đã qua sử dụng đến từ thương hiệu Patek Philippe nổi tiếng Thụy Sỹ. Chiếc đồng hồ Patek Philippe Gondo Serata 4962/200R-001 thiết kế nổi bật, cao cấp, mang đến vẻ đẹp sang trọng cho người dùng. \r\n\r\nĐồng Hồ Nữ Patek Philippe Gondo Serata 4962/200R-001 Màu Nâu Vàng\r\n\r\nĐôi nét về thương hiệu Patek Philippe\r\nPatek Philippe hay còn gọi là Patek Philippe Geneva là một nhà sản xuất đồng hồ đeo tay và đồng hồ bỏ túi cao cấp của Thụy Sỹ, được thành lập năm 1851 có trụ sở tại Geneva và thung lũng Joux. Hãng thiết kế sản xuất đồng hồ và bộ chuyển động đồng hồ, trong đó có những chiếc đồng hồ cơ cực kì tinh xảo.\r\n\r\nĐồng Hồ Nữ Patek Philippe Gondo Serata 4962/200R-001 Màu Nâu Vàng\r\n\r\nRất nhiều các chuyên gia, người hâm mộ đồng hồ đánh giá Patek Philippe là thương hiệu đồng hồ đeo tay có uy tín, danh tiếng trên thế giới.\r\n\r\nThiết kế Đồng Hồ Nữ Patek Philippe Gondo Serata 4962/200R-001 Màu Nâu Vàng\r\nĐồng Hồ Nữ Patek Philippe Gondo Serata 4962/200R-001 Màu Nâu Vàng mang phong cách nổi bật, sang trọng, sở hữu đường kính mặt số là 28.6mm × 40.85mm với lớp vỏ bằng vàng hồng và dây đeo được làm từ da cao cấp. \r\n\r\nĐồng Hồ Nữ Patek Philippe Gondo Serata 4962/200R-001 Màu Nâu Vàng\r\n\r\nMặt kính sapphire có khả năng chịu lực và hạn chế trầy xước tốt, hệ số chịu nước 3ATM.\r\n\r\nĐồng Hồ Nữ Patek Philippe Gondo Serata 4962/200R-001 Màu Nâu Vàng\r\n\r\nĐồng Hồ Patek Philippe Gondo Serata 4962/200R-001 là một siêu phẩm mang lại vẻ sang trọng, sẽ là mẫu đồng hồ mang đến cho người dùng trải nghiệm hoàn hảo. Patek Philippe không chỉ đơn thuần là thương hiệu mang đến những thiết kế đẹp, chất lượng, mà đó còn là cả một đẳng cấp, như một chuẩn mực để người ta phải hướng tới.', 1050000000.000, 'Thụy Sĩ', 'Patek Philippe', 'dong-ho-nu-patek-philippe-gondo-serata-4962-200r-001-mau-nau-vang-65d57d9a602d6-21022024113538.webp', 'Còn hàng'),
-('MH006', 'Đồng Hồ Nam Patek Philippe Grand Complications 5531R-012 Minute Repeater World Time Màu Nâu', 'Đồng Hồ Nam Patek Philippe Grand Complications 5531R-012 Minute Repeater World Time Màu Nâu là chiếc đồng hồ cao cấp đến từ thương hiệu Patek Philippe nổi tiếng Thụy Sỹ. Chiếc đồng hồ Patek Philippe Grand Complications 5531R-012 được trang bị tiện ích, cao cấp, mang đến vẻ đẹp sang trọng cho người dùng. \r\n\r\nĐồng Hồ Nam Patek Philippe Grand Complications 5531R-012 Minute Repeater World Time Màu Nâu\r\n\r\nĐôi nét về thương hiệu Patek Philippe\r\nPatek Philippe hay còn gọi là Patek Philippe Geneva là một nhà sản xuất đồng hồ đeo tay và đồng hồ bỏ túi cao cấp của Thụy Sỹ, được thành lập năm 1851 có trụ sở tại Geneva và thung lũng Joux. Hãng thiết kế sản xuất đồng hồ và bộ chuyển động đồng hồ, trong đó có những chiếc đồng hồ cơ cực kì tinh xảo.\r\n\r\nĐồng Hồ Nam Patek Philippe Grand Complications 5531R-012 Minute Repeater World Time Màu Nâu\r\n\r\nRất nhiều các chuyên gia, người hâm mộ đồng hồ đánh giá Patek Philippe là thương hiệu đồng hồ đeo tay có uy tín, danh tiếng trên thế giới.\r\n\r\nThiết kế Đồng Hồ Nam Patek Philippe Grand Complications 5531R-012 Minute Repeater World Time Màu Nâu\r\nĐồng Hồ Nam Patek Philippe Grand Complications 5531R-012 Minute Repeater World Time mang phong cách thanh lịch, sang trọng với lớp vỏ vàng hồng 18k được chải bóng và trang trí với hoa văn hobnail bằng tay, sở hữu đường kính 40mm và độ dày vỏ 11.49 mm. Dây đeo bằng da vân cá nâu mềm mại, ôm tay hoàn hảo.\r\n\r\nĐồng Hồ Nam Patek Philippe Grand Complications 5531R-012 Minute Repeater World Time Màu Nâu\r\n\r\nMặt số đồng hồ màu trắng cùng bộ kim giờ, phút hình lá, làm từ vàng hồng nổi bật dễ quan sát và một mặt số nhỏ trung tâm tráng men cloisonné mô tả các vườn nho Lavaux trên bờ hồ Geneva đầy ấn tượng. \r\n\r\nĐồng hồ được trang bị bộ chuyển động Caliber R 27 HU với cơ chế điểm chuông Minute Repeater và World Time, giờ, phút, chu kỳ mặt trăng, trang bị khoảng 48 giờ dự trữ năng lượng vô cùng tiện lợi và khả năng kháng nước. \r\n\r\nĐồng Hồ Nam Patek Philippe Grand Complications 5531R-012 Minute Repeater World Time Màu Nâu\r\n\r\nĐồng Hồ Nam Patek Philippe Grand Complications 5531R-012 là một siêu phẩm đo thời gian mang lại vẻ sang trọng đầy lịch lãm, sẽ là mẫu đồng hồ mang đến cho người dùng trải nghiệm ấn tượng. Patek Philippe không chỉ đơn thuần là thương hiệu mang đến những thiết kế đẹp, chất lượng, mà đó còn là cả một đẳng cấp, như một chuẩn mực để người ta phải hướng tới.', 30780000000.000, 'Thụy Sĩ', 'Patek Philippe', 'dong-ho-nam-patek-philippe-grand-complications-5531r-012-minute-repeater-world-time-mau-nau-6589259de2125-25122023134757.webp', 'Còn hàng'),
+('MH006', 'Đồng Hồ Nam Patek Philippe Grand Complications 5531R-012 Minute Repeater World Time Màu Nâu', 'Đồng Hồ Nam Patek Philippe Grand Complications 5531R-012 Minute Repeater World Time Màu Nâu là chiếc đồng hồ cao cấp đến từ thương hiệu Patek Philippe nổi tiếng Thụy Sỹ. Chiếc đồng hồ Patek Philippe Grand Complications 5531R-012 được trang bị tiện ích, cao cấp, mang đến vẻ đẹp sang trọng cho người dùng. \r\n\r\nĐồng Hồ Nam Patek Philippe Grand Complications 5531R-012 Minute Repeater World Time Màu Nâu\r\n\r\nĐôi nét về thương hiệu Patek Philippe\r\nPatek Philippe hay còn gọi là Patek Philippe Geneva là một nhà sản xuất đồng hồ đeo tay và đồng hồ bỏ túi cao cấp của Thụy Sỹ, được thành lập năm 1851 có trụ sở tại Geneva và thung lũng Joux. Hãng thiết kế sản xuất đồng hồ và bộ chuyển động đồng hồ, trong đó có những chiếc đồng hồ cơ cực kì tinh xảo.\r\n\r\nĐồng Hồ Nam Patek Philippe Grand Complications 5531R-012 Minute Repeater World Time Màu Nâu\r\n\r\nRất nhiều các chuyên gia, người hâm mộ đồng hồ đánh giá Patek Philippe là thương hiệu đồng hồ đeo tay có uy tín, danh tiếng trên thế giới.\r\n\r\nThiết kế Đồng Hồ Nam Patek Philippe Grand Complications 5531R-012 Minute Repeater World Time Màu Nâu\r\nĐồng Hồ Nam Patek Philippe Grand Complications 5531R-012 Minute Repeater World Time mang phong cách thanh lịch, sang trọng với lớp vỏ vàng hồng 18k được chải bóng và trang trí với hoa văn hobnail bằng tay, sở hữu đường kính 40mm và độ dày vỏ 11.49 mm. Dây đeo bằng da vân cá nâu mềm mại, ôm tay hoàn hảo.\r\n\r\nĐồng Hồ Nam Patek Philippe Grand Complications 5531R-012 Minute Repeater World Time Màu Nâu\r\n\r\nMặt số đồng hồ màu trắng cùng bộ kim giờ, phút hình lá, làm từ vàng hồng nổi bật dễ quan sát và một mặt số nhỏ trung tâm tráng men cloisonné mô tả các vườn nho Lavaux trên bờ hồ Geneva đầy ấn tượng. \r\n\r\nĐồng hồ được trang bị bộ chuyển động Caliber R 27 HU với cơ chế điểm chuông Minute Repeater và World Time, giờ, phút, chu kỳ mặt trăng, trang bị khoảng 48 giờ dự trữ năng lượng vô cùng tiện lợi và khả năng kháng nước. \r\n\r\nĐồng Hồ Nam Patek Philippe Grand Complications 5531R-012 Minute Repeater World Time Màu Nâu\r\n\r\nĐồng Hồ Nam Patek Philippe Grand Complications 5531R-012 là một siêu phẩm đo thời gian mang lại vẻ sang trọng đầy lịch lãm, sẽ là mẫu đồng hồ mang đến cho người dùng trải nghiệm ấn tượng. Patek Philippe không chỉ đơn thuần là thương hiệu mang đến những thiết kế đẹp, chất lượng, mà đó còn là cả một đẳng cấp, như một chuẩn mực để người ta phải hướng tới.', 307800000.000, 'Thụy Sĩ', 'Patek Philippe', 'dong-ho-nam-patek-philippe-grand-complications-5531r-012-minute-repeater-world-time-mau-nau-6589259de2125-25122023134757.webp', 'Còn hàng'),
 ('MH007', 'Đồng Hồ Nữ Rolex Datejust 31m 278384RBR-0022 Màu Bạc/Xanh', 'Đồng Hồ Nữ Rolex Datejust 31m 278384RBR-0022 Màu Bạc/Xanh là chiếc đồng hồ cao cấp đến từ thương hiệu Rolex. Mẫu đồng hồ Rolex Datejust 31m 278384RBR-0022 với thiết kế ấn tượng mang đến vẻ đẹp sang trọng cho người dùng.\r\n\r\nĐồng Hồ Nữ Rolex Datejust 31m 278384RBR-0022 Màu Bạc/Xanh\r\n\r\nVề thương hiệu Rolex\r\nTính đến nửa đầu năm 2017 thì thương hiệu đồng hồ nổi tiếng trên thế giới đó chính là Rolex – nhà sản xuất lừng danh đến từ Thụy Sĩ với nguồn gốc từ Anh Quốc. Với giá t.r.ị thương hiệu ước tính là 8.053 tỷ USD, Rolex cũng là thương hiệu sản xuất đồng hồ đeo tay trong top 10 thương hiệu hàng sang trọng trên thế giới.\r\n\r\nĐồng Hồ Nữ Rolex Datejust 31m 278384RBR-0022 Màu Bạc/Xanh\r\n\r\nBắt đầu nổi lên với phiên bản đồng hồ đeo tay kháng nước và từng bước phát triển, khẳng định được vị trí và tên tuổi của thương hiệu với phong cách lịch lãm. Và logo hình vương miện 5 đỉnh ở trên sản phẩm đồng hồ đeo tay của Rolex chính là một biểu tượng rất nổi tiếng ở thị trường đồng hồ thế giới.\r\n\r\nThiết Kế Đồng Hồ Nữ Rolex Datejust 31m 278384RBR-0022 Màu Bạc/Xanh\r\nĐồng Hồ Nữ Rolex Datejust 31m 278384RBR-0022 Màu Bạc/Xanh sở hữu mặt số hình tròn với đường kính 31mm. Vỏ và dây đeo được hoàn thiện từ thép không gỉ Oystersteel kết hợp vành bezel khía bằng vàng trắng 18K cao cấp, sáng bóng, cứng cáp, chịu lực tốt và hạn chế trầy xước, ngừa ăn mòn vượt trội.\r\n\r\nĐồng Hồ Nữ Rolex Datejust 31m 278384RBR-0022 Màu Bạc/Xanh\r\n\r\nMặt kính sapphire trong suốt, rõ nét cho khả năng hạn chế trầy xươc tốt. Viền vỏ nạm kim cương lấp lánh kết hợp mặt số màu xanh lá họa tiết sunray đặc biệt với cọc chỉ giờ và kim thanh mảnh, sáng, được hoàn thiện tinh xảo, sắc nét, dễ dàng quan sát. \r\n\r\nBộ máy: máy cơ, tự lên dây\r\nTính năng: Kim giờ, kim phút, kim giây trung tâm, hiển thị ngày với chức năng cài đặt nhanh\r\nDự trữ năng lượng: Xấp xỉ 55 tiếng\r\nChịu nước lên đến 100 mét / 330 feet phù hợp mọi hoạt động hàng ngày\r\nĐồng Hồ Nữ Rolex Datejust 31m 278384RBR-0022 Màu Bạc/Xanh\r\n\r\nĐồng Hồ Nữ Rolex Datejust 31m 278384RBR-0022 dễ dàng kết hợp với phụ kiện và trang phục để trở nên nổi bật hàng ngày cũng như các sự kiện, bữa tiệc, là một siêu phẩm mang lại vẻ sang trọng đầy nữ tính và cho người dùng trải nghiệm hoàn hảo.', 490000000.000, 'Thụy Sĩ', 'Rolex', 'dong-ho-nu-rolex-datejust-31m-278384rbr-0022-mau-bac-xanh-67f8870238a51-11042025100538.webp', 'Còn hàng'),
 ('MH008', 'Đồng Hồ Rolex Cosmograph Daytona Steel 116500LN-0001 Màu Bạc Trắng', 'Đồng Hồ Rolex Cosmograph Daytona Steel 116500LN-0001 Màu Bạc Trắng là chiếc đồng hồ cao cấp đến từ thương hiệu Rolex. Khi sở hữu siêu phẩm Steel 116500LN-0001 bạn sẽ cảm nhận như cả thế giới đang ở trên cổ tay mình.\r\n\r\nĐồng Hồ Rolex Cosmograph Daytona Steel 116500LN-0001 Màu Bạc Trắng\r\n\r\nVề thương hiệu Rolex\r\nTính đến nửa đầu năm 2017 thì thương hiệu đồng hồ nổi tiếng trên thế giới đó chính là Rolex – nhà sản xuất lừng danh đến từ Thụy Sĩ với nguồn gốc từ Anh Quốc. Với giá t.r.ị thương hiệu ước tính là 8.053 tỷ USD, Rolex cũng là thương hiệu sản xuất đồng hồ đeo tay trong top 10 thương hiệu hàng sang trọng trên thế giới.\r\n\r\nĐồng Hồ Rolex Cosmograph Daytona Steel 116500LN-0001 Màu Bạc Trắng\r\n\r\nBắt đầu nổi lên với phiên bản đồng hồ đeo tay kháng nước và từng bước phát triển, khẳng định được vị trí và tên tuổi của thương hiệu với phong cách lịch lãm. Và logo hình vương miện 5 đỉnh ở trên sản phẩm đồng hồ đeo tay của Rolex chính là một biểu tượng rất nổi tiếng ở thị trường đồng hồ thế giới.\r\n\r\nThiết Kế Đồng Hồ Rolex Cosmograph Daytona Steel 116500LN-0001 Màu Bạc Trắng\r\nĐồng hồ Rolex Cosmograph Daytona Steel 116500LN-0001 có điểm nhấn nổi bật là vành bezel được làm từ gốm Cerachrom, vật liệu mới được Rolex sử dụng trong năm 2005. Trước đó Cerachrom chỉ được Rolex ứng dụng trên dòng đồng hồ GMT-Master và Submariner, đến năm 2016, những chiếc Daytona mới có vành bezel Cerachrom, thay thế hoàn toàn cho vành bằng thép không gỉ.\r\n\r\nĐồng Hồ Rolex Cosmograph Daytona Steel 116500LN-0001 Màu Bạc Trắng\r\n\r\nVỏ khung của mẫu đồng hồ Cosmograph Daytona Steel 116500LN-0001 được làm từ thép không gỉ có kích thước 40mm, chịu nước ở độ sâu 100m. Bộ vỏ khung Oyster được đánh bóng cẩn thận, giữ nét thể thao khỏe khoắn. Ở cạnh bên phải của vỏ khung đồng hồ chắc chắn là hai nút bấm chronograph cùng núm điều chỉnh thời gian đã được vặn kín. Hai nút bấm góc 2 và 4 giờ vận hành chức năng chronograph tại mặt số phụ góc 3 và 9 giờ trên mặt số chính. Còn núm vặn góc 3 giờ được dùng để điều chỉnh chức năng thời gian cả mẫu đồng hồ Daytona.\r\n\r\nĐồng Hồ Rolex Cosmograph Daytona Steel 116500LN-0001 Màu Bạc Trắng\r\n\r\nVới ba mặt số phụ xếp lần lượt tại góc 3, 6, 9 giờ, nhiều người đã gọi đây là thiết kế mặt số Panda bởi nhìn rất giống gương mặt của những chú gấu trúc. Rolex Cosmograph Daytona Steel 116500LN-0001 có mặt số trắng được đánh giá cao về mặt thẩm mỹ hơn hẳn.\r\n\r\nĐồng Hồ Rolex Cosmograph Daytona Steel 116500LN-0001 Màu Bạc Trắng\r\n\r\nỞ bên trong phiên bản này là bộ máy tự động 4130 - đây là bộ máy chronograph đầu được Rolex nghiên cứu, phát triển và lắp ráp, do đó khả năng về hiệu suất, sự chính xác,… đều được nâng lên. Rolex 116500LN-0001 có thể vận hành chính xác trong vòng 72 giờ đồng hồ và tần số hoạt động là 4Hz, cùng sai số hàng là -2/+2 giây.', 950000000.000, 'Thụy Sĩ', 'Rolex', 'dong-ho-rolex-cosmograph-daytona-steel-116500ln-0001-mau-bac-trang-669746e845890-17072024112200.webp', 'Còn hàng'),
 ('MH009', 'Đồng Hồ Nữ Rolex Oyster Perpetual 36mm Celebration Dial Automatic Chronometer 126000-0009 Màu Bạc Xanh', 'Đồng Hồ Nữ Rolex Oyster Perpetual 36mm Celebration Dial Automatic Chronometer 126000-0009 Màu Bạc Xanh là chiếc đồng hồ cao cấp được nhiều tín đồ thời trang yêu thích hiện nay. Sở hữu thiết kế hiện đại, cùng gam màu sang trọng Rolex 126000-0009 mang đến cho các cô gái vẻ đẹp thanh lịch, hiện đại và không kém phần năng động.\r\n\r\nĐồng Hồ Nữ Rolex Oyster Perpetual 36mm Celebration Dial Automatic Chronometer 126000-0009 Màu Bạc Xanh\r\n\r\nVề thương hiệu Rolex\r\nTính đến nửa đầu năm 2017 thì thương hiệu đồng hồ có giá tr.ị thế giới đó chính là Rolex – nhà sản xuất lừng danh đến từ Thụy Sĩ với nguồn gốc từ Anh Quốc. Với giá tr.ị thương hiệu ước tính là 8.053 tỷ USD, Rolex cũng là thương hiệu chỉ sản xuất đồng hồ đeo tay trong top 10 thương hiệu hàng sang trọng cao cấp thế giới.\r\n\r\nĐồng Hồ Nữ Rolex Oyster Perpetual 36mm Celebration Dial Automatic Chronometer 126000-0009 Màu Bạc Xanh\r\n\r\nBắt đầu nổi lên với phiên bản đồng hồ đeo tay ngăn nước và từng bước phát triển, khẳng định được vị trí và tên tuổi của thương hiệu cao cấp với sự đẳng cấp. Và logo hình vương miện 5 đỉnh ở trên sản phẩm đồng hồ đeo tay của Rolex chính là một biểu tượng rất nổi tiếng ở thị trường đồng hồ thế giới.\r\n\r\nThiết Kế Đồng Hồ Nữ Rolex Oyster Perpetual 36mm Celebration Dial Automatic Chronometer 126000-0009 Màu Bạc Xanh\r\nĐồng hồ Rolex Oyster Perpetual 36mm Celebration Dial Automatic Chronometer 126000-0009 thiết kế bộ vỏ và dây từ chất liệu thép không gỉ Oystersteel - loại hợp kim được sử dụng thông dụng trong ngành công nghệ cao, có độ kháng ăn mòn cực đại, lưu giữ được vẻ đẹp của sản phẩm theo thời gian.\r\n\r\nĐồng Hồ Nữ Rolex Oyster Perpetual 36mm Celebration Dial Automatic Chronometer 126000-0009 Màu Bạc Xanh\r\n\r\nVới kích thước 36mm, chiếc đồng hồ này phù hợp cho những cô nàng có cổ tay trung bình. Mặt số màu xanh dương và được tạo điểm nhấn với những họa tiết Celebration đa sắc màu trông thật độc đáo và lôi cuốn, phản chiếu ánh sáng một cách rực rỡ. Rolex Oyster 126000-0009 là sự kết hợp hoàn hảo giữa thiết kế đẳng cấp, chất lượng và tinh tế, thể hiện phần nào vẻ đẳng cấp và cá tính của chủ nhân.\r\n\r\nĐồng Hồ Nữ Rolex Oyster Perpetual 36mm Celebration Dial Automatic Chronometer 126000-0009 Màu Bạc Xanh\r\n\r\nRolex Oyster Perpetual 36mm Celebration Dial Automatic Chronometer 126000-0009 được chế tạo và phát triển độc quyền bởi chính Rolex với bộ máy Automatic (tự động), giúp chiếc đồng hồ của bạn luôn hoạt động hiệu quả và chính xác trong mọi điều kiện môi trường.', 500000000.000, 'Thụy Sĩ', 'Rolex', 'dong-ho-nu-rolex-oyster-perpetual-36mm-celebration-dial-automatic-chronometer-126000-0009-mau-bac-xanh-66d90f6814dd7-05092024085448.webp', 'Còn hàng'),
@@ -467,12 +518,7 @@ CREATE TABLE `tbreview` (
 --
 
 INSERT INTO `tbreview` (`id`, `mahang`, `username`, `rating`, `content`, `created_at`) VALUES
-(1, 'MH061', 'nv1', 4, 'đm phúc răm', '2025-10-30 10:20:12'),
-(3, 'MH011', 'nv3', 5, 's', '2025-10-30 13:37:19'),
-(5, 'MH016', 'nv1', 5, 'd', '2025-11-01 10:41:16'),
-(6, 'MH012', 'nv3', 4, 'cũng được nha', '2025-11-05 22:38:52'),
-(7, 'MH018', 'nv2', 5, 'đẹp đấy', '2025-11-12 14:08:21'),
-(8, 'MH006', 'nv1', 5, 'quá xịn xò, nhờ cái đồng hồ mà em tán được ny', '2025-11-20 12:28:31');
+(1, 'MH061', 'nv1', 4, 'đm phúc răm', '2025-10-30 10:20:12');
 
 -- --------------------------------------------------------
 
@@ -538,10 +584,12 @@ CREATE TABLE `tbuser` (
 --
 
 INSERT INTO `tbuser` (`username`, `password`, `active`) VALUES
+('111', '$2y$10$pobnK9I87iIknI.pbYjVHueLLwG8KeH4yeG.a9nR.qU0dx0Xm7Pym', 1),
 ('admin@gmail.com', '$2y$10$bKjX4wR/qmC/pd4bLK1sGupPGuwmjQJZbLd4YKYgCD.tVxyaGo6/y', 1),
 ('nv1', '$2y$10$gBo60h3dTPXBdx3rcOWrZ.valgmP45uJ/2YIrnCLofN04IUlhdEhi', 1),
 ('nv2', '$2y$10$We2S3WqQFfBIwKtV5zVxu.wLJbdT8.Nx6fn8Fut.92jn3SB.rH8wq', 1),
-('nv3', '$2y$10$UeXifrw9saLfe2CKlUjqIeyiey2FiyGJfCCnrFQ7tK1A1AsQnyWdW', 1);
+('nv3', '$2y$10$UeXifrw9saLfe2CKlUjqIeyiey2FiyGJfCCnrFQ7tK1A1AsQnyWdW', 1),
+('nv4', '$2y$10$9Wl00NXCDjggYXhEyuUw4eOGxKKK/ISLu1ftkjpp5MwxyntQPGN8C', 1);
 
 -- --------------------------------------------------------
 
@@ -559,10 +607,12 @@ CREATE TABLE `tbuserinrole` (
 --
 
 INSERT INTO `tbuserinrole` (`username`, `role`) VALUES
+('111', 'Member'),
 ('admin@gmail.com', 'Admin'),
 ('nv1', 'Member'),
 ('nv2', 'Member'),
-('nv3', 'Member');
+('nv3', 'Member'),
+('nv4', 'Member');
 
 -- --------------------------------------------------------
 
@@ -650,7 +700,14 @@ INSERT INTO `training_phrases` (`id`, `intent_id`, `phrase_text`) VALUES
 (69, 7, 'Giờ mở cửa là mấy giờ?'),
 (70, 7, 'Cách liên hệ với cửa hàng'),
 (71, 7, 'Số điện thoại hotline'),
-(72, 7, 'Tôi muốn đến xem trực tiếp');
+(72, 7, 'Tôi muốn đến xem trực tiếp'),
+(75, 8, 'hh'),
+(76, 9, 'Tư vấn giúp mình'),
+(77, 9, 'Mình muốn mua đồng hồ này'),
+(78, 9, 'Cách thức mua hàng thế nào'),
+(79, 9, 'Có nhân viên tư vấn không'),
+(80, 9, 'Gọi lại cho tôi'),
+(81, 9, 'Tôi cần hỗ trợ gấp');
 
 --
 -- Chỉ mục cho các bảng đã đổ
@@ -663,6 +720,12 @@ ALTER TABLE `conversations`
   ADD PRIMARY KEY (`id`),
   ADD KEY `user_identifier` (`user_identifier`),
   ADD KEY `status` (`status`);
+
+--
+-- Chỉ mục cho bảng `customer_leads`
+--
+ALTER TABLE `customer_leads`
+  ADD PRIMARY KEY (`id`);
 
 --
 -- Chỉ mục cho bảng `intents`
@@ -788,37 +851,43 @@ ALTER TABLE `training_phrases`
 -- AUTO_INCREMENT cho bảng `conversations`
 --
 ALTER TABLE `conversations`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
+
+--
+-- AUTO_INCREMENT cho bảng `customer_leads`
+--
+ALTER TABLE `customer_leads`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
 -- AUTO_INCREMENT cho bảng `intents`
 --
 ALTER TABLE `intents`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=10;
 
 --
 -- AUTO_INCREMENT cho bảng `messages`
 --
 ALTER TABLE `messages`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=24;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=70;
 
 --
 -- AUTO_INCREMENT cho bảng `responses`
 --
 ALTER TABLE `responses`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=21;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=24;
 
 --
 -- AUTO_INCREMENT cho bảng `tbhinhanhchitiet`
 --
 ALTER TABLE `tbhinhanhchitiet`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=601;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=605;
 
 --
 -- AUTO_INCREMENT cho bảng `tbreview`
 --
 ALTER TABLE `tbreview`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=10;
 
 --
 -- AUTO_INCREMENT cho bảng `tbreview_reply`
@@ -836,7 +905,7 @@ ALTER TABLE `tbtheodoi`
 -- AUTO_INCREMENT cho bảng `training_phrases`
 --
 ALTER TABLE `training_phrases`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=73;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=82;
 
 --
 -- Các ràng buộc cho các bảng đã đổ

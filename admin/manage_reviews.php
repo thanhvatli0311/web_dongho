@@ -1,31 +1,22 @@
 <?php
 session_start();
 
-// Sửa đổi 1: Sử dụng require với __DIR__ để đảm bảo đường dẫn luôn đúng
 require __DIR__ . '/../includes/db.php'; 
-require __DIR__ . '/../templates/adminheader.php';
 
-// Kiểm tra nếu chưa đăng nhập hoặc không phải admin
 if (!isset($_SESSION['username']) || $_SESSION['role'] !== 'Admin') {
     header("Location: ../pages/login.php");
     exit;
 }
 
-// Sửa đổi 2: Chuyển toàn bộ logic xử lý sang PDO và try-catch để bắt lỗi
 if (isset($_GET['action']) && isset($_GET['id'])) {
     $review_id = (int)$_GET['id'];
     $action = $_GET['action'];
-
     if ($action === 'delete') {
         try {
             $sql_delete = "DELETE FROM tbreview WHERE id = ?";
             $stmt = $pdo->prepare($sql_delete);
-            
-            // PDO thực thi và truyền tham số trực tiếp, an toàn hơn
             $stmt->execute([$review_id]);
-            
             $_SESSION['message'] = ['type' => 'success', 'content' => 'Đánh giá đã được xóa thành công.'];
-
         } catch (PDOException $e) {
             // Bắt lỗi nếu có sự cố xảy ra
             $_SESSION['message'] = ['type' => 'danger', 'content' => 'Lỗi khi xóa đánh giá: ' . $e->getMessage()];
@@ -36,7 +27,6 @@ if (isset($_GET['action']) && isset($_GET['id'])) {
     }
 }
 
-// Sửa đổi 3: Chuyển logic lấy dữ liệu sang PDO
 try {
     $sql_reviews = "
         SELECT 
@@ -53,21 +43,16 @@ try {
     ";
 
     $stmt_reviews = $pdo->query($sql_reviews);
-    
-    // PDO fetchAll để lấy tất cả các dòng
     $reviews = $stmt_reviews->fetchAll(PDO::FETCH_ASSOC);
 
 } catch (PDOException $e) {
-    // Nếu không thể lấy dữ liệu, lưu lỗi vào session để hiển thị đẹp hơn
     $_SESSION['message'] = ['type' => 'danger', 'content' => 'Lỗi truy vấn cơ sở dữ liệu: ' . $e->getMessage()];
-    // Gán mảng rỗng để phần HTML bên dưới không bị lỗi khi lặp qua biến $reviews
     $reviews = []; 
 }
+require __DIR__ . '/../templates/adminheader.php';
 ?>
 
-<!-- ================================================================ -->
-<!-- ========= PHẦN HTML KHÔNG CẦN THAY ĐỔI ======================== -->
-<!-- ================================================================ -->
+
 <div class="container mt-5">
     <h2>Quản lý Đánh giá Sản phẩm</h2>
 
