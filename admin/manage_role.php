@@ -153,7 +153,7 @@ try {
 
 <body>
     <div class="container-custom">
-        <h2>Quản lý tài khoản và Phân quyền</h2>
+        <h2>Quản lý tài khoản và phân quyền</h2>
         
         <!-- Hiển thị thông báo (nếu có) -->
         <?php if (isset($_SESSION['message'])): ?>

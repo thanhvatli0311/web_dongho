@@ -86,7 +86,7 @@ require __DIR__ . '/../templates/adminheader.php';
 
         <div class="card-clean">
             <div class="d-flex justify-content-between align-items-center mb-4">
-                <h2 class="h4 m-0">Danh sách Sản phẩm</h2>
+                <h2 class="h4 m-0">Danh sách sản phẩm</h2>
                 <a href="add_product.php" class="btn btn-primary">
                     <i class="fas fa-plus me-2"></i> Thêm sản phẩm
                 </a>

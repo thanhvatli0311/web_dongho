@@ -54,7 +54,7 @@ require __DIR__ . '/../templates/adminheader.php';
 
 
 <div class="container mt-5">
-    <h2>Quản lý Đánh giá Sản phẩm</h2>
+    <h2>Quản lý đánh giá sản phẩm</h2>
 
     <?php 
     if (isset($_SESSION['message'])) {

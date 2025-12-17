@@ -1,221 +1,168 @@
 <?php
+// api_tracking.php - Xử lý AJAX tra cứu từ frontend (Sử dụng $pdo từ db.php)
 header('Content-Type: application/json; charset=utf-8');
 
-define('DB_HOST', 'localhost');
-define('DB_USER', 'root');
-define('DB_PASS', '');
-define('DB_NAME', 'dbdongho');
-define('GHTK_TOKEN', '34UV7PnBnFeyFN7UPfXG1LWxVAzNR8EIAFrhSVq');
+// THAY ĐỔI ĐƯỜNG DẪN NÀY NẾU FILE db.php CỦA BẠN KHÔNG CÙNG THƯ MỤC
+include 'db.php'; 
+
+// Cấu hình GHTK (Đã tích hợp Token bạn cung cấp)
+define('GHTK_API_TOKEN', '34UV7PnBnFeyFN7UPfXG1LWxVAzNR8EIAFrhSVq'); 
+define('CACHE_DURATION_SECONDS', 30 * 60); // 30 phút
+define('GHTK_API_URL', 'https://services.giaohangtietkiem.vn/services/tracking?');
 
 /**
- * Kết nối đến cơ sở dữ liệu MySQL.
- * @return mysqli
- */
-function connectDB() {
-    $conn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
-    if ($conn->connect_error) {
-        die(json_encode(['error' => 'Lỗi kết nối CSDL: ' . $conn->connect_error]));
-    }
-    $conn->set_charset("utf8mb4");
-    return $conn;
-}
-
-/**
- * Gọi API của Giao Hàng Tiết Kiệm để lấy trạng thái mới nhất của đơn hàng.
- * @param string $mavandon Mã vận đơn của GHTK.
- * @return array
- */
-function callGHTKApi($mavandon) {
-    $url = "https://services.giaohangtietkiem.vn/services/shipment/tracking?order_id=" . urlencode($mavandon);
-
-    $ch = curl_init();
-    curl_setopt($ch, CURLOPT_URL, $url);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_HTTPHEADER, ['Token: ' . GHTK_TOKEN]);
-
-    $response = curl_exec($ch);
-    $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    // curl_close($ch);
-
-    if ($http_code != 200) {
-        return ['error' => 'Lỗi kết nối API GHTK. HTTP Code: ' . $http_code];
-    }
-    
-    $data = json_decode($response, true);
-    
-    if (isset($data['success']) && $data['success'] === true) {
-        return ['success' => true, 'data' => $data];
-    } else {
-        // GHTK có thể trả về success=false kèm theo message lỗi
-        $message = isset($data['message']) ? $data['message'] : 'Không thể tra cứu vận đơn này.';
-        return ['error' => 'Lỗi từ GHTK: ' . $message];
-    }
-}
-
-/**
- * Ánh xạ trạng thái chi tiết của GHTK sang trạng thái tổng quát của website.
- * @param string $ghtk_label Nhãn trạng thái từ GHTK.
+ * Ánh xạ trạng thái GHTK (ID số) sang trạng thái chung của website (chuỗi).
+ * @param int $ghtk_status_id
  * @return string
  */
-function mapStatus($ghtk_label) {
-    $map = [
-        'Đã tiếp nhận' => 'Đang xử lý',
-        'Đang lấy hàng' => 'Đang xử lý',
-        'Đã lấy hàng' => 'Đang xử lý',
-        'Đang vận chuyển' => 'Đang giao hàng',
-        'Đang giao hàng' => 'Đang giao hàng',
-        'Đã giao hàng' => 'Đã giao',
-        'Hoàn thành' => 'Đã giao',
-        'Không giao được' => 'Đang giao hàng',
-        'Hủy' => 'Đã hủy',
-    ];
-    
-    foreach ($map as $key => $value) {
-        if (stripos($ghtk_label, $key) !== false) {
-            return $value;
-        }
-    }
-
-    return 'Đang xử lý';
-}
-
-/**
- * Cập nhật lịch sử theo dõi và trạng thái đơn hàng trong CSDL.
- * @param mysqli $conn
- * @param string $madonhang
- * @param array $ghtk_data
- * @return bool|array
- */
-function updateDatabase($conn, $madonhang, $ghtk_data) {
-    $conn->begin_transaction();
-    $current_time = date('Y-m-d H:i:s');
-    $last_status = 'Đang xử lý';
-
-    try {
-        // Cập nhật lịch sử chi tiết (tbtheodoi)
-        if (isset($ghtk_data['data']['tracking'])) {
-            // Xóa lịch sử cũ để đồng bộ lại toàn bộ từ GHTK.
-            // Tối ưu hơn có thể kiểm tra và chỉ insert bản ghi mới.
-            $conn->query("DELETE FROM tbtheodoi WHERE madonhang = '{$madonhang}'");
-
-            foreach ($ghtk_data['data']['tracking'] as $item) {
-                $status_name = $conn->real_escape_string($item['status_name'] ?? 'Không rõ');
-                $status_description = $conn->real_escape_string($item['status_description'] ?? '');
-                $time = date('Y-m-d H:i:s', strtotime($item['time']));
-
-                $sql_insert = "INSERT INTO tbtheodoi (madonhang, thoigian, trangthai_ghtk, mo_ta) 
-                               VALUES ('{$madonhang}', '{$time}', '{$status_name}', '{$status_description}')";
-                $conn->query($sql_insert);
-
-                $last_status = mapStatus($status_name);
-            }
-        }
-
-        // Cập nhật trạng thái tổng quát và thời gian của đơn hàng (tbdonhang)
-        $sql_update_donhang = "UPDATE tbdonhang 
-                               SET tinhtrang = '{$last_status}', thoigian_capnhat = '{$current_time}'
-                               WHERE madonhang = '{$madonhang}'";
-        $conn->query($sql_update_donhang);
-
-        $conn->commit();
-        return true;
-        
-    } catch (Exception $e) {
-        $conn->rollback();
-        return ['error' => 'Lỗi cập nhật CSDL: ' . $e->getMessage()];
+function mapStatusIdToWebStatus($ghtk_status_id) {
+    switch ((int)$ghtk_status_id) {
+        case 1: case 2: case 3: return 'Đang xử lý';
+        case 4: case 6: return 'Đang giao hàng';
+        case 5: case 20: return 'Đã giao';
+        case 7: case 8: case 9: case 10: return 'Đã hủy';
+        default: return 'Đang xử lý';
     }
 }
-
-/**
- * Lấy lịch sử theo dõi của đơn hàng trực tiếp từ CSDL.
- * @param mysqli $conn
- * @param string $madonhang
- * @param string $current_tinhtrang
- * @return array
- */
-function getTrackingHistoryFromDB($conn, $madonhang, $current_tinhtrang) {
-    $history = [];
-    $sql = "SELECT thoigian, trangthai_ghtk, mo_ta 
-            FROM tbtheodoi 
-            WHERE madonhang = '{$madonhang}' 
-            ORDER BY thoigian DESC";
-
-    $result = $conn->query($sql);
-
-    if ($result && $result->num_rows > 0) {
-        while ($row = $result->fetch_assoc()) {
-            $history[] = $row;
-        }
-    }
-
-    return [
-        'current_status' => $current_tinhtrang,
-        'history' => $history
-    ];
-}
-
-
-
-// XỬ LÝ CHÍNH
-
 
 $madonhang = $_REQUEST['madonhang'] ?? null;
-if (!$madonhang) {
+if (empty($madonhang)) {
     echo json_encode(['error' => 'Vui lòng cung cấp mã đơn hàng.']);
     exit;
 }
 
-$conn = connectDB();
-
-// Lấy thông tin cơ bản của đơn hàng
-$sql_info = "SELECT mavandon, thoigian_capnhat, tinhtrang FROM tbdonhang WHERE madonhang = '{$madonhang}'";
-$result_info = $conn->query($sql_info);
-
-if (!$result_info || $result_info->num_rows == 0) {
-    echo json_encode(['error' => 'Không tìm thấy đơn hàng với mã: ' . htmlspecialchars($madonhang)]);
-    $conn->close();
+// Kiểm tra kết nối PDO
+if (!isset($pdo)) {
+    echo json_encode(['error' => 'Lỗi: Không thể kết nối CSDL (Kiểm tra db.php).']);
     exit;
 }
 
-$order_info = $result_info->fetch_assoc();
-$mavandon = $order_info['mavandon'];
-$thoigian_capnhat = $order_info['thoigian_capnhat'];
-$current_tinhtrang = $order_info['tinhtrang'];
 
-if (!$mavandon) {
-    echo json_encode(['error' => 'Đơn hàng này chưa có mã vận đơn GHTK.']);
-    $conn->close();
-    exit;
-}
+try {
+    // 1. KIỂM TRA MÃ VẬN ĐƠN VÀ TRẠNG THÁI HIỆN TẠI (tbdonhang)
+    $sql_order = "SELECT mavandon, current_status_id, thoigian_capnhat, tinhtrang FROM tbdonhang WHERE madonhang = ?";
+    $stmt_order = $pdo->prepare($sql_order);
+    $stmt_order->execute([$madonhang]);
+    $order = $stmt_order->fetch();
 
-// Chỉ gọi API GHTK nếu lần cập nhật cuối cùng đã quá 30 phút
-$need_update = false;
-if (empty($thoigian_capnhat) || (time() - strtotime($thoigian_capnhat)) > (30 * 60)) {
-    $need_update = true;
-}
-
-if ($need_update) {
-    $api_result = callGHTKApi($mavandon);
-    
-    if (isset($api_result['error'])) {
-        // Nếu API lỗi, trả về dữ liệu cũ từ DB kèm theo cảnh báo
-        $response_data = getTrackingHistoryFromDB($conn, $madonhang, $current_tinhtrang);
-        $response_data['warning'] = 'Lỗi cập nhật trạng thái mới nhất từ GHTK: ' . $api_result['error'];
-        echo json_encode($response_data);
-        $conn->close();
+    if (!$order) {
+        echo json_encode(['error' => 'Không tìm thấy đơn hàng trong hệ thống.']);
         exit;
     }
 
-    updateDatabase($conn, $madonhang, $api_result);
+    $mavandon = $order['mavandon'];
+    $current_status_id = $order['current_status_id'];
+    $current_tinhtrang = $order['tinhtrang'];
+    $thoigian_capnhat = $order['thoigian_capnhat'];
+    $warning = null;
+
+    if (empty($mavandon)) {
+        echo json_encode(['error' => 'Đơn hàng chưa có mã vận đơn GHTK. Vui lòng thử lại sau.']);
+        exit;
+    }
+
+    // Logic cập nhật: Gọi API nếu cache hết hạn hoặc trạng thái chưa cuối cùng và đã quá 5 phút
+    $need_update = false;
+    $time_since_last_update = time() - strtotime($thoigian_capnhat);
+    $is_final_status = in_array($current_status_id, [5, 7, 8, 9, 10, 20]); 
+
+    if (!$is_final_status && $time_since_last_update > 300) { // 5 phút nếu chưa hoàn thành
+        $need_update = true;
+    } elseif ($time_since_last_update > CACHE_DURATION_SECONDS) { // 30 phút
+        $need_update = true;
+    }
     
-    // Lấy lại tình trạng mới nhất từ DB sau khi cập nhật
-    $new_info = $conn->query($sql_info)->fetch_assoc();
-    $current_tinhtrang = $new_info['tinhtrang'];
+    // 2. GỌI API GHTK NẾU CẦN
+    if ($need_update) {
+        $api_url = GHTK_API_URL . "label=" . urlencode($mavandon);
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $api_url);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, ['Token: ' . GHTK_API_TOKEN]);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 10);
+        $response = curl_exec($ch);
+        $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        $ghtk_data = json_decode($response, true);
+
+        if ($http_code == 200 && isset($ghtk_data['success']) && $ghtk_data['success'] && isset($ghtk_data['order'])) {
+            
+            $pdo->beginTransaction();
+            try {
+                $tracking_history = $ghtk_data['order']['tracking'] ?? [];
+                
+                // Cập nhật tbtheodoi
+                foreach ($tracking_history as $item) {
+                    $item_id = $item['status_id'] ?? 0;
+                    $item_time = date('Y-m-d H:i:s', strtotime($item['time']));
+                    
+                    $sql_check = "SELECT id FROM tbtheodoi WHERE madonhang = ? AND ghtk_status_id = ? AND thoigian = ?";
+                    $stmt_check = $pdo->prepare($sql_check);
+                    $stmt_check->execute([$madonhang, $item_id, $item_time]);
+                    
+                    if ($stmt_check->rowCount() == 0) {
+                        $sql_insert = "INSERT INTO tbtheodoi (madonhang, mavandon, ghtk_status_id, trangthai_ghtk, mo_ta, tracking_location, thoigian) 
+                                       VALUES (?, ?, ?, ?, ?, ?, ?)";
+                        $stmt_insert = $pdo->prepare($sql_insert);
+                        $stmt_insert->execute([
+                            $madonhang, 
+                            $mavandon, 
+                            $item_id, 
+                            $item['status_name'] ?? '', 
+                            $item['status_description'] ?? '', 
+                            $item['location'] ?? null, 
+                            $item_time
+                        ]);
+                    }
+                }
+
+                // Cập nhật tbdonhang
+                $latest_tracking = end($tracking_history);
+                $new_ghtk_status_id = $latest_tracking['status_id'] ?? $current_status_id;
+                $new_time = date('Y-m-d H:i:s', strtotime($latest_tracking['time'] ?? date('Y-m-d H:i:s')));
+                $new_tinhtrang_web = mapStatusIdToWebStatus($new_ghtk_status_id);
+
+                $sql_update_donhang = "UPDATE tbdonhang 
+                                       SET tinhtrang = ?, current_status_id = ?, thoigian_capnhat = ?
+                                       WHERE madonhang = ?";
+                $stmt_update = $pdo->prepare($sql_update_donhang);
+                $stmt_update->execute([$new_tinhtrang_web, $new_ghtk_status_id, $new_time, $madonhang]);
+
+                $pdo->commit();
+                $current_tinhtrang = $new_tinhtrang_web;
+                
+            } catch (PDOException $e) {
+                $pdo->rollBack();
+                error_log('Lỗi cập nhật CSDL từ API Pull: ' . $e->getMessage());
+                $warning = 'Cập nhật CSDL thất bại. Hiển thị dữ liệu cũ.';
+            }
+        } else {
+            // Lỗi GHTK API
+            $warning = 'GHTK API báo lỗi. Hiển thị dữ liệu cũ.';
+        }
+    }
+
+    // 3. LẤY LỊCH SỬ TỪ CSDL (Luôn dùng DB để trả về)
+    $sql_history = "SELECT thoigian, trangthai_ghtk, mo_ta, tracking_location 
+                    FROM tbtheodoi 
+                    WHERE madonhang = ?
+                    ORDER BY thoigian DESC";
+    $stmt_history = $pdo->prepare($sql_history);
+    $stmt_history->execute([$madonhang]);
+    $history = $stmt_history->fetchAll();
+
+    $response_data = [
+        'current_status' => $current_tinhtrang,
+        'history' => $history,
+        'warning' => $warning,
+    ];
+    
+    echo json_encode($response_data);
+
+} catch (PDOException $e) {
+    echo json_encode(['error' => 'Lỗi truy vấn CSDL: ' . $e->getMessage()]);
 }
 
-// Trả về dữ liệu cuối cùng (dữ liệu mới hoặc dữ liệu cũ trong cache 30 phút)
-$response_data = getTrackingHistoryFromDB($conn, $madonhang, $current_tinhtrang);
-echo json_encode($response_data);
-
-$conn->close();
+$pdo = null;
 ?>

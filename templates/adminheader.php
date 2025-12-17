@@ -19,21 +19,24 @@ $current_page = basename($_SERVER['PHP_SELF']);
 // 4. Hàm tạo tiêu đề trang tự động
 function formatPageTitle($filename) {
     $titles = [
-        'admin.php'             => 'Tổng Quan Dashboard',
-        'revenue_report.php'    => 'Báo Cáo Doanh Thu',
-        'manage_customers.php'  => 'Quản Lý Khách Hàng',
-        'manage_products.php'   => 'Quản Lý Sản Phẩm',
-        'manage_orders.php'     => 'Quản Lý Đơn Hàng',
-        'manage_reviews.php'    => 'Quản Lý Đánh Giá',
-        'manage_coupons.php'    => 'Quản Lý Khuyến Mãi',
-        'manage_role.php'       => 'Phân Quyền Hệ Thống',
-        'chatbot_manager.php'   => 'Huấn Luyện Chatbot',
-        'live_chat.php'         => 'Hỗ Trợ Trực Tuyến',
-        'manage_leads.php'      => 'Khách Hàng Tiềm Năng',
-        'edit_product.php'      => 'Chỉnh Sửa Sản Phẩm',
-        'add_product.php'       => 'Thêm Sản Phẩm Mới'
+        'admin.php'             => 'Tổng quan Dashboard',
+        'revenue_report.php'    => 'Báo cáo doanh thu',
+        'manage_customers.php'  => 'Quản lý khách hàng',
+        'manage_products.php'   => 'Quản lý sản phẩm',
+        'manage_orders.php'     => 'Quản lý đơn hàng',
+        // MỤC MỚI ĐƯỢC THÊM
+        'assign_tracking_code.php'=> 'Gán mã vận đơn',
+        // HẾT MỤC MỚI
+        'manage_reviews.php'    => 'Quản lý đánh giá',
+        'manage_coupons.php'    => 'Quản lý khuyến mãi',
+        'manage_role.php'       => 'Phân quyền hệ thống',
+        'chatbot_manager.php'   => 'Huấn luyện chatbot',
+        'live_chat.php'         => 'Hỗ trợ trực tuyến',
+        'manage_leads.php'      => 'Khách hàng tiềm năng',
+        'edit_product.php'      => 'Chỉnh sửa sản phẩm',
+        'add_product.php'       => 'Thêm sản phẩm mới'
     ];
-    return $titles[$filename] ?? 'Trang Quản Trị';
+    return $titles[$filename] ?? 'Trang quản trị';
 }
 
 $page_title_display = formatPageTitle($current_page);
@@ -45,15 +48,13 @@ $page_title_display = formatPageTitle($current_page);
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= $page_title_display ?> - CleanAdmin</title> 
     
-    <!-- Bootstrap 5 & Icons -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <style>
-        /* === CLEAN ADMIN STYLE === */
+        /* === CLEAN ADMIN STYLE (Giữ nguyên theo yêu cầu) === */
         :root {
             --primary-color: #3B82F6;
             --accent-color: #10B981; 
@@ -205,7 +206,6 @@ $page_title_display = formatPageTitle($current_page);
 </head>
 <body>
 
-<!-- SIDEBAR NAVIGATION -->
 <nav class="sidebar">
     <div class="sidebar-brand">
         <i class="fas fa-clock"></i> ADMIN PAGE
@@ -216,7 +216,6 @@ $page_title_display = formatPageTitle($current_page);
             <i class="fas fa-home"></i> Tổng quan
         </a>
         
-        <!-- MỚI THÊM: Link báo cáo doanh thu -->
         <a href="revenue_report.php" class="<?= $current_page == 'revenue_report.php' ? 'active' : '' ?>">
             <i class="fas fa-chart-line"></i> Báo cáo doanh thu
         </a>
@@ -233,6 +232,10 @@ $page_title_display = formatPageTitle($current_page);
         <a href="manage_orders.php" class="<?= in_array($current_page, ['manage_orders.php', 'order_detail.php']) ? 'active' : '' ?>">
             <i class="fas fa-shopping-cart"></i> Đơn hàng
         </a>
+        
+        <a href="assign_tracking_code.php" class="<?= $current_page == 'assign_tracking_code.php' ? 'active' : '' ?>">
+            <i class="fas fa-shipping-fast"></i> Gán Mã Vận Đơn
+        </a>
         <a href="manage_reviews.php" class="<?= $current_page == 'manage_reviews.php' ? 'active' : '' ?>">
             <i class="fas fa-star"></i> Đánh giá
         </a>
@@ -240,7 +243,6 @@ $page_title_display = formatPageTitle($current_page);
             <i class="fas fa-tags"></i> Khuyến mãi
         </a>
         
-        <!-- AI SECTION -->
         <div style="margin: 10px 16px; border-top: 1px solid var(--border-color);"></div>
         <small style="padding: 0 16px; color: var(--text-muted); font-size: 11px; font-weight: 600; text-transform: uppercase; margin-bottom: 5px; display:block;">Hệ thống AI</small>
         
@@ -254,16 +256,13 @@ $page_title_display = formatPageTitle($current_page);
             <i class="fas fa-address-book"></i> Khách tiềm năng
         </a>
 
-        <!-- LOGOUT (Trỏ ra ngoài thư mục admin -> pages) -->
         <a href="../pages/logout.php" class="logout-btn">
             <i class="fas fa-sign-out-alt"></i> Đăng xuất
         </a>
     </div>
 </nav>
 
-<!-- MAIN WRAPPER -->
 <div class="main-wrapper">
-    <!-- TOP HEADER -->
     <header class="top-header">
         <h2 class="page-title"><?= $page_title_display ?></h2>
         <div class="user-profile">
@@ -274,5 +273,4 @@ $page_title_display = formatPageTitle($current_page);
         </div>
     </header>
 
-    <!-- CONTENT START -->
     <div class="main-content">

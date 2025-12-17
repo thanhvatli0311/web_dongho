@@ -1,11 +1,8 @@
 <?php
-// Bắt đầu session và include các file cần thiết
 include '../session/session_start.php';
-// GIẢ ĐỊNH: File db.php trả về biến kết nối PDO là $pdo
 include '../includes/db.php';
 include '../templates/header.php';
 
-// Kiểm tra biến $pdo
 if (!isset($pdo)) {
     die("Lỗi: Không thể kết nối CSDL (PDO). Vui lòng kiểm tra file includes/db.php.");
 }
@@ -33,10 +30,8 @@ $seed = (int)($_GET['seed'] ?? mt_rand());
     
     <!-- CSS Chính -->
     <link rel="stylesheet" href="../assets/css/style.css">
-    
-    <!-- CSS CHATBOT (NHÚNG TRỰC TIẾP) -->
+
     <style>
-        /* 1. Nút mở Chat */
         .chat-bubble {
             position: fixed; bottom: 30px; right: 30px; width: 60px; height: 60px;
             background: linear-gradient(135deg, #007bff, #0056b3);
@@ -313,7 +308,6 @@ $seed = (int)($_GET['seed'] ?? mt_rand());
         <i class="fas fa-check-circle"></i> Sản phẩm đã được thêm vào giỏ hàng!
     </div>
 
-    <!-- ================== WIDGET CHATBOT (HTML) ================== -->
     <div id="chat-bubble" class="chat-bubble">
         <i class="fas fa-comment-dots"></i>
     </div>
@@ -338,14 +332,12 @@ $seed = (int)($_GET['seed'] ?? mt_rand());
             <button id="send-btn"><i class="fas fa-paper-plane"></i></button>
         </div>
     </div>
-    <!-- ================== END WIDGET ================== -->
 
     <?php include '../templates/footer.php'; ?>
 
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/slick-carousel/1.8.1/slick.min.js"></script>
     
-    <!-- ================== JAVASCRIPT CHATBOT (NHÚNG TRỰC TIẾP) ================== -->
     <script>
     $(document).ready(function() {
         // === 1. LOGIC WEBSITE (SLIDER & CART) ===
